@@ -36,6 +36,7 @@ class TLERecord(Base):
     bstar = Column(Float, nullable=True)
     source = Column(String, nullable=False, default="CelesTrak")
     source_group = Column(String, nullable=False)
+    source_format = Column(String, nullable=False, server_default="TLE", default="TLE")  # TLE, OMM_JSON, OMM_CSV, OEM, CDM
     ingested_at = Column(DateTime, default=func.now())
 
     rso = relationship("RSOCatalog", back_populates="tles")

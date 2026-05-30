@@ -90,6 +90,8 @@ export const ResearchLabWorkspace: React.FC = () => {
   const epoch = tle?.epoch ?? activeState?.tle_epoch_utc ?? reliability?.tle_epoch_utc ?? null;
   const ageDays = activeState?.tle_age_days ?? reliability?.tle_age_days ?? null;
   const reliabilityLabel = reliability?.reliability_label ?? activeState?.reliability_status ?? 'UNKNOWN';
+  const sourceFormat = tle?.source_format ?? 'TLE';
+  const formatLabel = sourceFormat === 'OMM_JSON' ? 'OMM JSON' : sourceFormat === 'TLE' ? 'Legacy TLE' : sourceFormat;
 
   const fmt = (v: number | null | undefined, digits = 2, unit = '') =>
     v == null || !isFinite(v) ? '—' : `${v.toFixed(digits)}${unit ? ' ' + unit : ''}`;
@@ -112,7 +114,7 @@ export const ResearchLabWorkspace: React.FC = () => {
       },
       data_provenance: {
         source_provider: activeObject.source,
-        source_format: 'TLE',
+        source_format: sourceFormat,
         element_epoch_utc: epoch,
         element_age_days: ageDays,
         reliability: reliabilityLabel,
@@ -202,7 +204,7 @@ export const ResearchLabWorkspace: React.FC = () => {
         <Card title={t('research_lab.data_provenance')}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
             <Field label="Source" value={activeObject.source} />
-            <Field label="Format" value="Legacy TLE" />
+            <Field label="Format" value={formatLabel} />
             <Field label="Propagation Model" value="SGP4" />
             <Field label="Element Epoch" value={fmtEpoch(epoch)} mono />
             <Field label="Element Age" value={ageDays != null ? `${ageDays.toFixed(2)} days` : '—'} mono />
@@ -361,7 +363,7 @@ export const ResearchLabWorkspace: React.FC = () => {
         className="mono-text"
       >
         <span>Source: {activeObject ? activeObject.source : '—'}</span>
-        <span>Format: TLE</span>
+        <span>Format: {sourceFormat}</span>
         <span>Epoch: {fmtEpoch(epoch)}</span>
         <span>Model: SGP4</span>
         <span>Confidence: {reliabilityLabel}</span>

@@ -190,3 +190,14 @@ Git initialised first: `master` @ `0b3ba4c` is the Phases 0–2 baseline; ongoin
 Built clean (`tsc && vite build`, 1817 modules). Additive overlay; the panel/globe system is untouched.
 
 **Phase 3 V2 (next):** wire Validation Center (manual reference comparison), Orbit Evolution (historical-TLE charts), Pass Analysis and Relative Motion into the workspace canvas; richer Research Record types.
+
+## 12. Phase 4 V1 — OMM-first, TLE-compatible data (2026-05-30, tested)
+Additive — `line1`/`line2` and the SGP4 propagation path are unchanged.
+1. **Schema**: `TLERecord.source_format` column (default `TLE`); idempotent startup migration `database.py::run_migrations()` (called from `main.py` after `create_all`). Verified on a **copy** of the live DB: 41,827 rows, column added, count unchanged, all backfilled to `TLE`.
+2. **OMM ingestion** (`services/celestrak.py`): CelesTrak `FORMAT=json` → `omm_record_to_tle()` (python-sgp4 `omm.initialize` + `export_tle`) → existing pipeline, tagged `OMM_JSON`. `ingest_celestrak_omm_group()` + `data_format` field on `/catalog/sync` (default `tle`, backward-compatible).
+3. **Surfacing**: `source_format` on `TLERead` (backend + frontend types); Research Lab provenance / footer / export read it dynamically (`OMM_JSON`→"OMM JSON", `TLE`→"Legacy TLE"); Data Sources sync UI has a Legacy-TLE / OMM-JSON toggle.
+4. **Tests** (`tests/test_omm_ingest.py`): OMM→TLE round-trip (NORAD + fields), malformed-record skip. Targeted 26-test regression suite green (catalog API, parser, astrodynamics, propagation, health).
+
+Live DB backed up first to `Desktop\önemli yedek\trsat_v3_db_2026-05-30\` (the DB lives at `Desktop\data\`, outside both the project folder and git).
+
+**Phase 4 V2 (next):** generalized record resolution across formats; OEM/CDM import path; per-object format badge in catalog lists.

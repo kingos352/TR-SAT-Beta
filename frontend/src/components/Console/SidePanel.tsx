@@ -164,6 +164,7 @@ const DataSourcesInner: React.FC = () => {
 
   // Sync Form States
   const [syncGroup, setSyncGroup] = React.useState<string>('stations');
+  const [syncFormat, setSyncFormat] = React.useState<'tle' | 'omm'>('tle');
   const [syncLoading, setSyncLoading] = React.useState<boolean>(false);
   const [syncResult, setSyncResult] = React.useState<any>(null);
 
@@ -176,9 +177,9 @@ const DataSourcesInner: React.FC = () => {
   const handleSync = async () => {
     setSyncLoading(true);
     setSyncResult(null);
-    addLog(`Ingestion: Initiated synchronization for CelesTrak group '${syncGroup}'...`);
+    addLog(`Ingestion: Initiated ${syncFormat.toUpperCase()} synchronization for CelesTrak group '${syncGroup}'...`);
     try {
-      const res = await syncCatalogGroup(syncGroup);
+      const res = await syncCatalogGroup(syncGroup, syncFormat);
       setSyncResult(res);
       setApiStatus('connected');
       if (res.warning) {
@@ -260,6 +261,18 @@ const DataSourcesInner: React.FC = () => {
       {/* CelesTrak */}
       <div>
         <div style={{ fontSize: '10px', color: 'var(--text-bright)', marginBottom: '6px' }}>{t('data_sources.celestrak_sync')}</div>
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '6px' }}>
+          {(['tle', 'omm'] as const).map(fmt => (
+            <button
+              key={fmt}
+              onClick={() => setSyncFormat(fmt)}
+              disabled={syncLoading}
+              style={{ flex: 1, padding: '4px', borderRadius: '4px', border: '1px solid', borderColor: syncFormat === fmt ? 'var(--accent-blue)' : 'var(--border-color)', background: syncFormat === fmt ? 'rgba(37,183,255,0.12)' : 'transparent', color: syncFormat === fmt ? 'var(--accent-blue)' : 'var(--text-muted)', fontSize: '10px', fontWeight: 600, cursor: syncLoading ? 'not-allowed' : 'pointer' }}
+            >
+              {fmt === 'tle' ? 'Legacy TLE' : 'OMM JSON'}
+            </button>
+          ))}
+        </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <select value={syncGroup} onChange={(e) => setSyncGroup(e.target.value)} disabled={syncLoading} style={{ flexGrow: 1, padding: '6px', borderRadius: '4px', backgroundColor: 'rgba(3, 7, 18, 0.7)', border: '1px solid var(--border-color)', color: 'var(--text-bright)', fontSize: '11px', outline: 'none' }}>
             {groupsList.map(g => <option key={g} value={g}>{g.toUpperCase()}</option>)}
