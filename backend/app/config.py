@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Resolve project paths dynamically
 backend_dir = Path(__file__).resolve().parent.parent # Resolve to backend/
-project_root = backend_dir.parent                    # Resolve to project root (TR-SAT-V3/)
+project_root = backend_dir.parent                    # Resolve to project root (TR-SAT-V4/)
 
 # Resolve environment files order
 appdata_dir = os.environ.get("TRSAT_DATA_DIR")
@@ -61,7 +61,7 @@ def save_env_vars(env_data: dict):
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = "TR-SAT Mission Control V3"
+    APP_NAME: str = "TR-SAT Mission Control V4"
     APP_ENV: str = "development"
     DATABASE_URL: str = "sqlite:///../data/trsat_v3.sqlite"
     

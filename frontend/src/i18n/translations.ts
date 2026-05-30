@@ -317,7 +317,7 @@ export const translations: Record<string, any> = {
       placeholder: 'Ask AI...',
       ask: 'Ask',
       thinking: 'Thinking...',
-      greeting: 'How can I assist you with TR-SAT-V3 operations?',
+      greeting: 'How can I assist you with TR-SAT-V4 operations?',
       error: 'Error:',
       suggestions: [
         "Explain the active object state.",
@@ -759,7 +759,7 @@ export const translations: Record<string, any> = {
       placeholder: 'Yapay Zekaya Sor...',
       ask: 'Sor',
       thinking: 'Düşünüyor...',
-      greeting: 'TR-SAT-V3 operasyonlarında size nasıl yardımcı olabilirim?',
+      greeting: 'TR-SAT-V4 operasyonlarında size nasıl yardımcı olabilirim?',
       error: 'Hata:',
       suggestions: [
         "Aktif nesnenin durumunu açıkla.",

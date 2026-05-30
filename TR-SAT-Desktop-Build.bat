@@ -1,6 +1,6 @@
 @echo off
 REM ---------------------------------------------------------------
-REM  TR-SAT Mission Control V3 — Production desktop build
+REM  TR-SAT Mission Control V4 — Production desktop build
 REM  Compiles backend to .exe (PyInstaller) and bundles everything
 REM  into a Windows installer via Tauri (NSIS + MSI).
 REM ---------------------------------------------------------------

@@ -26,7 +26,7 @@ const ConjunctionPanelInner: React.FC = () => {
       schema: 'trsat.conjunction_provenance',
       schema_version: 1,
       created_at_utc: new Date().toISOString(),
-      software_version: '3.0.0',
+      software_version: '4.0.0',
       result_index: idx,
       primary_norad_id: res.primary_norad_id,
       secondary_norad_id: res.secondary_norad_id,

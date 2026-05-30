@@ -12,7 +12,7 @@ run_migrations()
 app = FastAPI(
     title=settings.APP_NAME,
     description="Backend services for dynamic orbit propagation, pass prediction, and resident space object tracking.",
-    version="3.0.0"
+    version="4.0.0"
 )
 
 # Backend binds exclusively to 127.0.0.1 so only local callers can reach it.
@@ -46,7 +46,7 @@ async def api_root():
     Service entry point returning simple greetings message.
     """
     return {
-        "message": "TR-SAT Mission Control V3 API"
+        "message": "TR-SAT Mission Control V4 API"
     }
 
 @app.get("/{full_path:path}")

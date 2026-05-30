@@ -1,7 +1,7 @@
 [package]
 name = "tr-sat-mission-control"
-version = "3.0.0"
-description = "TR-SAT Mission Control V3 — Local-first orbital intelligence platform"
+version = "4.0.0"
+description = "TR-SAT Mission Control V4 — Local-first orbital intelligence platform"
 authors = ["TR-SAT"]
 edition = "2021"
 rust-version = "1.77"

@@ -12,7 +12,7 @@ import type {
 
 const MU = 398600.4418;
 const R_EARTH = 6378.137;
-const SOFTWARE_VERSION = '3.0.0';
+const SOFTWARE_VERSION = '4.0.0';
 
 type ModuleId = 'overview' | 'validation' | 'evolution' | 'passes' | 'relative' | 'conjunction' | 'numerical' | 'repro';
 

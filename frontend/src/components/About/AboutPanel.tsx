@@ -65,7 +65,7 @@ export const AboutPanel: React.FC<AboutPanelProps> = ({ onClose, isTr }) => {
               TR-SAT MISSION CONTROL
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
-              Version 3.0.0 · SGP4 Orbital Intelligence Platform · Local-First
+              Version 4.0.0 · SGP4 Orbital Intelligence Platform · Local-First
             </div>
           </div>
           <button
