@@ -256,7 +256,14 @@ export const translations: Record<string, any> = {
       encounter_plane_note: 'Miss point, hard-body radius (red) and 1σ uncertainty ellipse, projected onto the plane perpendicular to the relative velocity. Uncertainty is heuristic.',
       risk_high: 'Elevated Experimental Alert',
       risk_medium: 'Review Suggested',
-      risk_low: 'Monitor'
+      risk_low: 'Monitor',
+      provenance_title: 'Data Provenance',
+      tle_age_primary: 'Primary TLE Age',
+      tle_age_secondary: 'Secondary TLE Age',
+      covariance_present: 'Position covariance: estimated 2D heuristic',
+      covariance_absent: 'No covariance — Pc is geometric heuristic only',
+      model_used: 'Model: SGP4 analytic · two-body',
+      export_result: 'Export JSON'
     },
     live_tracking: {
       enable: 'Enable Live Tracking',
@@ -427,7 +434,11 @@ export const translations: Record<string, any> = {
       data_provenance: 'Data Provenance',
       orbit_summary: 'Orbit Summary',
       actions: 'Research Actions',
-      export_record: 'Export Research Record'
+      export_record: 'Export Research Record',
+      conjunction_no_results: 'No conjunction screening results. Run Conjunction Analysis from the left panel, then return here.',
+      conjunction_disclaimer: 'All results are experimental SGP4-based estimates. Pc values are heuristic (no operational covariance). Not a CDM-grade product.',
+      conjunction_all_export: 'Export All Results (JSON)',
+      conjunction_results: 'Screening Results'
     }
   },
   tr: {
@@ -687,7 +698,14 @@ export const translations: Record<string, any> = {
       encounter_plane_note: 'Bağıl hıza dik düzleme projekte edilmiş ıskalama noktası, hard-body yarıçapı (kırmızı) ve 1σ belirsizlik elipsi. Belirsizlik heuristiktir.',
       risk_high: 'Yükseltilmiş Deneysel Uyarı',
       risk_medium: 'İnceleme Önerilir',
-      risk_low: 'İzle'
+      risk_low: 'İzle',
+      provenance_title: 'Veri Kökeni',
+      tle_age_primary: 'Birincil TLE Yaşı',
+      tle_age_secondary: 'İkincil TLE Yaşı',
+      covariance_present: 'Konum kovaryansı: tahmini 2B heuristik',
+      covariance_absent: 'Kovaryans yok — Pc yalnızca geometrik heuristik',
+      model_used: 'Model: SGP4 analitik · iki cisim',
+      export_result: 'JSON Dışa Aktar'
     },
     live_tracking: {
       enable: 'Canlı Takihi Etkinleştir',
@@ -858,7 +876,11 @@ export const translations: Record<string, any> = {
       data_provenance: 'Veri Kökeni',
       orbit_summary: 'Yörünge Özeti',
       actions: 'Araştırma Eylemleri',
-      export_record: 'Araştırma Kaydını Dışa Aktar'
+      export_record: 'Araştırma Kaydını Dışa Aktar',
+      conjunction_no_results: 'Yakın geçiş tarama sonucu yok. Sol panelden Konjunksiyon Analizi çalıştırın, ardından buraya dönün.',
+      conjunction_disclaimer: 'Tüm sonuçlar deneysel SGP4 tabanlı tahminlerdir. Pc değerleri heuristiktir (operasyonel kovaryans yok). CDM seviyesi ürün değildir.',
+      conjunction_all_export: 'Tüm Sonuçları Dışa Aktar (JSON)',
+      conjunction_results: 'Tarama Sonuçları'
     }
   }
 };

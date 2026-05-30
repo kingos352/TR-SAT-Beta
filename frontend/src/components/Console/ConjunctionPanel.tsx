@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useConsoleStore } from '../../store/useConsoleStore';
 import { screenConjunction, ConjunctionScreenRequest, screenDebrisWatch } from '../../api/client';
+import type { ConjunctionResult } from '../../api/client';
 import { useTranslation } from '../../i18n/useTranslation';
 import { SkeletonCard } from './Skeleton';
 
@@ -12,6 +13,48 @@ const ConjunctionPanelInner: React.FC = () => {
   const setActiveConjunctionResult = useConsoleStore(s => s.setActiveConjunctionResult);
   const addLog = useConsoleStore(s => s.addLog);
   const { t } = useTranslation();
+
+  const ageFreshness = (days?: number | null): string => {
+    if (days == null) return 'var(--text-muted)';
+    if (days < 3) return '#22c55e';
+    if (days < 7) return '#f59e0b';
+    return '#ef4444';
+  };
+
+  const exportResultJson = (res: ConjunctionResult, idx: number) => {
+    const record = {
+      schema: 'trsat.conjunction_provenance',
+      schema_version: 1,
+      created_at_utc: new Date().toISOString(),
+      software_version: '3.0.0',
+      result_index: idx,
+      primary_norad_id: res.primary_norad_id,
+      secondary_norad_id: res.secondary_norad_id,
+      tca_time: res.tca_time,
+      miss_distance_km: res.miss_distance_km,
+      relative_speed_km_per_s: res.relative_speed_km_per_s ?? null,
+      risk_level: res.risk_level ?? res.severity,
+      collision_probability: res.collision_probability ?? null,
+      data_provenance: {
+        primary_tle_age_days: res.primary_tle_age_days ?? null,
+        secondary_tle_age_days: res.secondary_tle_age_days ?? null,
+        covariance_source: res.covariance_2d_km2 ? 'heuristic_2d' : 'none',
+        propagation_model: 'SGP4',
+        assumptions: [
+          'SGP4 analytic propagation from public TLE/GP orbital elements.',
+          'No operational covariance; Pc is a heuristic estimate only.',
+          'Not a CDM-grade product. For informational/research use.',
+        ],
+      },
+    };
+    const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trsat_conjunction_${res.primary_norad_id}_${res.secondary_norad_id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Reframe backend risk levels into experimental, non-operational language.
   const riskLabel = (level?: string | null): string => {
@@ -27,6 +70,7 @@ const ConjunctionPanelInner: React.FC = () => {
   const [refineStep, setRefineStep] = useState(1);
   const [includeRocketBodies, setIncludeRocketBodies] = useState(false);
   const [sortBy, setSortBy] = useState<'pc' | 'distance'>('pc');
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [debrisWatchLoading, setDebrisWatchLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -336,6 +380,32 @@ const ConjunctionPanelInner: React.FC = () => {
                     <span>{res.miss_distance_km.toFixed(2)} km</span>
                     <span>{t('conjunction.rel_speed')} {relSpeed.toFixed(2)} km/s</span>
                   </div>
+
+                  {/* Provenance toggle */}
+                  <div
+                    onClick={(e) => { e.stopPropagation(); setExpandedIdx(expandedIdx === idx ? null : idx); }}
+                    style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  >
+                    <span style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{t('conjunction.provenance_title')}</span>
+                    <span style={{ fontSize: '9px' }}>{expandedIdx === idx ? '▼' : '▶'}</span>
+                  </div>
+
+                  {expandedIdx === idx && (
+                    <div style={{ marginTop: '5px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '9px' }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', color: 'var(--text-muted)' }}>
+                        <span>{t('conjunction.tle_age_primary')}: <span style={{ color: ageFreshness(res.primary_tle_age_days) }}>{res.primary_tle_age_days != null ? `${res.primary_tle_age_days.toFixed(1)} d` : '—'}</span></span>
+                        <span>{t('conjunction.tle_age_secondary')}: <span style={{ color: ageFreshness(res.secondary_tle_age_days) }}>{res.secondary_tle_age_days != null ? `${res.secondary_tle_age_days.toFixed(1)} d` : '—'}</span></span>
+                      </div>
+                      <div style={{ color: 'var(--text-muted)' }}>ⓘ {res.covariance_2d_km2 ? t('conjunction.covariance_present') : t('conjunction.covariance_absent')}</div>
+                      <div style={{ color: 'var(--text-muted)' }}>{t('conjunction.model_used')}</div>
+                      <button
+                        onClick={() => exportResultJson(res, idx)}
+                        style={{ marginTop: '3px', padding: '2px 8px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-muted)', fontSize: '9px', cursor: 'pointer', alignSelf: 'flex-start' }}
+                      >
+                        {t('conjunction.export_result')}
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}

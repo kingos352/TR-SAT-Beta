@@ -7,6 +7,7 @@ import type {
   HistoricalTLEPoint,
   PassWindow,
   RelativeMotionResult,
+  ConjunctionResult,
 } from '../../api/client';
 
 const MU = 398600.4418;
@@ -410,6 +411,164 @@ const ValidationModule: React.FC<{ noradId: number; objectName: string }> = ({ n
   );
 };
 
+// ─── Conjunction Study module ────────────────────────────────────────────────
+
+const ConjunctionStudyModule: React.FC = () => {
+  const { t } = useTranslation();
+  const conjunctionResults = useConsoleStore(s => s.conjunctionResults);
+  const [sortBy, setSortBy] = useState<'pc' | 'distance'>('pc');
+  const [filterRisk, setFilterRisk] = useState<'ALL' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL');
+
+  const ageFreshness = (days?: number | null): string => {
+    if (days == null) return 'var(--text-muted)';
+    if (days < 3) return '#22c55e';
+    if (days < 7) return '#f59e0b';
+    return '#ef4444';
+  };
+
+  const riskLabel = (level?: string | null): string => {
+    if (level === 'HIGH') return t('conjunction.risk_high');
+    if (level === 'MEDIUM') return t('conjunction.risk_medium');
+    if (level === 'LOW') return t('conjunction.risk_low');
+    return level ?? '—';
+  };
+
+  const filtered = [...conjunctionResults]
+    .filter(r => filterRisk === 'ALL' || r.risk_level === filterRisk)
+    .sort((a, b) =>
+      sortBy === 'pc'
+        ? (b.collision_probability ?? 0) - (a.collision_probability ?? 0)
+        : a.miss_distance_km - b.miss_distance_km
+    );
+
+  const exportAll = () => {
+    if (!filtered.length) return;
+    const record = {
+      schema: 'trsat.conjunction_study',
+      schema_version: 1,
+      created_at_utc: new Date().toISOString(),
+      software_version: SOFTWARE_VERSION,
+      result_count: filtered.length,
+      propagation_model: 'SGP4',
+      disclaimer: 'All results are experimental SGP4-based estimates. Pc values are heuristic. Not a CDM-grade product.',
+      results: filtered.map((r, i) => ({
+        index: i,
+        primary_norad_id: r.primary_norad_id,
+        secondary_norad_id: r.secondary_norad_id,
+        tca_time: r.tca_time,
+        miss_distance_km: r.miss_distance_km,
+        relative_speed_km_per_s: r.relative_speed_km_per_s ?? null,
+        risk_level: r.risk_level ?? r.severity,
+        collision_probability: r.collision_probability ?? null,
+        primary_tle_age_days: r.primary_tle_age_days ?? null,
+        secondary_tle_age_days: r.secondary_tle_age_days ?? null,
+        covariance_source: r.covariance_2d_km2 ? 'heuristic_2d' : 'none',
+        primary_object_type: r.primary_object_type ?? null,
+        secondary_object_type: r.secondary_object_type ?? null,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trsat_conjunction_study_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (!conjunctionResults.length) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gap: '12px' }}>
+        <FlaskConical size={30} strokeWidth={1.25} color="var(--text-muted)" />
+        <div style={{ fontSize: '13px', lineHeight: 1.6, maxWidth: '440px' }}>
+          {t('research_lab.conjunction_no_results')}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '18px', overflowY: 'auto', height: '100%' }}>
+      <Disclaimer text={t('research_lab.conjunction_disclaimer')} />
+
+      <Card title={t('research_lab.conjunction_results')}>
+        {/* Controls */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as 'pc' | 'distance')}
+            style={{ ...inputStyle, width: 'auto', fontSize: '11px', padding: '4px 8px' }}
+          >
+            <option value="pc">Sort: Probability</option>
+            <option value="distance">Sort: Miss Distance</option>
+          </select>
+          <select
+            value={filterRisk}
+            onChange={e => setFilterRisk(e.target.value as typeof filterRisk)}
+            style={{ ...inputStyle, width: 'auto', fontSize: '11px', padding: '4px 8px' }}
+          >
+            <option value="ALL">All Risk Levels</option>
+            <option value="HIGH">Elevated Alert</option>
+            <option value="MEDIUM">Review Suggested</option>
+            <option value="LOW">Monitor</option>
+          </select>
+          <button onClick={exportAll} style={{ ...ghostBtn, fontSize: '11px' }}>
+            {t('research_lab.conjunction_all_export')}
+          </button>
+        </div>
+
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+          {filtered.length} / {conjunctionResults.length} results
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {filtered.map((res: ConjunctionResult, idx: number) => {
+            let riskColor = 'var(--text-muted)';
+            if (res.risk_level === 'HIGH') riskColor = 'var(--accent-red)';
+            else if (res.risk_level === 'MEDIUM') riskColor = 'var(--accent-orange)';
+            else if (res.risk_level === 'LOW') riskColor = 'var(--accent-cyan)';
+            const pc = res.collision_probability;
+
+            return (
+              <div key={idx} className="mono-text" style={{ background: 'rgba(0,0,0,0.2)', border: `1px solid ${riskColor}`, borderRadius: 'var(--radius-sm)', padding: '10px 12px', fontSize: '11px' }}>
+                {/* Risk header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: riskColor, fontWeight: 700, marginBottom: '8px' }}>
+                  <span>{riskLabel(res.risk_level ?? res.severity)}</span>
+                  <span>Pc (est.) {pc != null ? pc.toExponential(2) : '—'}</span>
+                </div>
+
+                {/* Core orbital data */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '5px', color: 'var(--text-primary)', marginBottom: '8px' }}>
+                  <div><span style={{ color: 'var(--text-muted)' }}>TCA: </span>{res.tca_time.replace('T', ' ').slice(0, 19)}</div>
+                  <div><span style={{ color: 'var(--text-muted)' }}>Miss: </span>{res.miss_distance_km.toFixed(3)} km</div>
+                  <div><span style={{ color: 'var(--text-muted)' }}>Primary: </span>NORAD {res.primary_norad_id}{res.primary_object_type ? ` (${res.primary_object_type})` : ''}</div>
+                  <div><span style={{ color: 'var(--text-muted)' }}>Secondary: </span>NORAD {res.secondary_norad_id}{res.secondary_object_type ? ` (${res.secondary_object_type})` : ''}</div>
+                  {res.relative_speed_km_per_s != null && (
+                    <div><span style={{ color: 'var(--text-muted)' }}>Rel. Speed: </span>{res.relative_speed_km_per_s.toFixed(2)} km/s</div>
+                  )}
+                </div>
+
+                {/* Provenance strip — always visible in Research Lab */}
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '7px', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '10px', color: 'var(--text-muted)' }}>
+                  <div style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '3px' }}>
+                    {t('conjunction.provenance_title')}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                    <span>{t('conjunction.tle_age_primary')}: <span style={{ color: ageFreshness(res.primary_tle_age_days) }}>{res.primary_tle_age_days != null ? `${res.primary_tle_age_days.toFixed(1)} d` : '—'}</span></span>
+                    <span>{t('conjunction.tle_age_secondary')}: <span style={{ color: ageFreshness(res.secondary_tle_age_days) }}>{res.secondary_tle_age_days != null ? `${res.secondary_tle_age_days.toFixed(1)} d` : '—'}</span></span>
+                  </div>
+                  <div>ⓘ {res.covariance_2d_km2 ? t('conjunction.covariance_present') : t('conjunction.covariance_absent')}</div>
+                  <div>{t('conjunction.model_used')}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+    </div>
+  );
+};
+
 // ─── Main workspace ──────────────────────────────────────────────────────────
 
 export const ResearchLabWorkspace: React.FC = () => {
@@ -491,10 +650,11 @@ export const ResearchLabWorkspace: React.FC = () => {
       </div>
     );
 
-    if (moduleId === 'evolution') return <OrbitEvolutionModule noradId={activeObject.norad_id} objectName={activeObject.name} />;
-    if (moduleId === 'passes')    return <PassAnalysisModule    noradId={activeObject.norad_id} objectName={activeObject.name} />;
-    if (moduleId === 'relative')  return <RelativeMotionModule  primaryId={activeObject.norad_id} primaryName={activeObject.name} />;
-    if (moduleId === 'validation') return <ValidationModule     noradId={activeObject.norad_id} objectName={activeObject.name} />;
+    if (moduleId === 'evolution')   return <OrbitEvolutionModule noradId={activeObject.norad_id} objectName={activeObject.name} />;
+    if (moduleId === 'passes')      return <PassAnalysisModule    noradId={activeObject.norad_id} objectName={activeObject.name} />;
+    if (moduleId === 'relative')    return <RelativeMotionModule  primaryId={activeObject.norad_id} primaryName={activeObject.name} />;
+    if (moduleId === 'validation')  return <ValidationModule      noradId={activeObject.norad_id} objectName={activeObject.name} />;
+    if (moduleId === 'conjunction') return <ConjunctionStudyModule />;
 
     if (moduleId !== 'overview') return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gap: '12px' }}>
@@ -545,6 +705,7 @@ export const ResearchLabWorkspace: React.FC = () => {
             <button onClick={() => setModuleId('evolution')} style={ghostBtn}>{t('research_lab.module_evolution')}</button>
             <button onClick={() => setModuleId('passes')} style={ghostBtn}>{t('research_lab.module_passes')}</button>
             <button onClick={() => setModuleId('relative')} style={ghostBtn}>{t('research_lab.module_relative')}</button>
+            <button onClick={() => setModuleId('conjunction')} style={ghostBtn}>{t('research_lab.module_conjunction')}</button>
           </div>
         </Card>
       </div>
