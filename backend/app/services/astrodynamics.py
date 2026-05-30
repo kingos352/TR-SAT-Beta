@@ -120,6 +120,60 @@ def propagate_state(name: Optional[str], line1: str, line2: str, timestamp_utc: 
         "reliability_status": reliability
     }
 
+def get_eci_state(name: Optional[str], line1: str, line2: str, timestamp_utc: datetime) -> dict:
+    """
+    Return the GCRS (ECI) position and velocity vectors from Skyfield.
+    Units: km for position, km/s for velocity.
+    """
+    t_utc = ensure_utc(timestamp_utc)
+    satellite = build_satellite_from_tle(name, line1, line2)
+    t = ts.from_datetime(t_utc)
+    geocentric = satellite.at(t)
+    pos = geocentric.position.km
+    vel = geocentric.velocity.km_per_s
+    return {
+        "timestamp_utc": t_utc,
+        "pos_x_km": float(pos[0]),
+        "pos_y_km": float(pos[1]),
+        "pos_z_km": float(pos[2]),
+        "vel_x_kms": float(vel[0]),
+        "vel_y_kms": float(vel[1]),
+        "vel_z_kms": float(vel[2]),
+    }
+
+def generate_eci_ephemeris(
+    name: Optional[str],
+    line1: str,
+    line2: str,
+    start_time_utc: datetime,
+    end_time_utc: datetime,
+    step_seconds: int = 60,
+) -> List[dict]:
+    """
+    Generate an ECI (GCRS) state vector timeseries.
+    """
+    t_start = ensure_utc(start_time_utc)
+    t_end = ensure_utc(end_time_utc)
+    satellite = build_satellite_from_tle(name, line1, line2)
+    points = []
+    current = t_start
+    while current <= t_end and len(points) < 5000:
+        t = ts.from_datetime(current)
+        geo = satellite.at(t)
+        pos = geo.position.km
+        vel = geo.velocity.km_per_s
+        points.append({
+            "timestamp_utc": current,
+            "pos_x_km": float(pos[0]),
+            "pos_y_km": float(pos[1]),
+            "pos_z_km": float(pos[2]),
+            "vel_x_kms": float(vel[0]),
+            "vel_y_kms": float(vel[1]),
+            "vel_z_kms": float(vel[2]),
+        })
+        current += timedelta(seconds=step_seconds)
+    return points
+
 def generate_ephemeris(
     name: Optional[str], 
     line1: str, 

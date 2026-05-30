@@ -62,6 +62,36 @@ class CatalogEphemerisRequest(BaseModel):
             raise ValueError(f"Too many ephemeris points requested: {int(points)} (limit is 10000)")
         return self
 
+class CatalogECIRequest(BaseModel):
+    norad_id: int
+    timestamp_utc: datetime
+
+class CatalogECIEphemerisRequest(BaseModel):
+    norad_id: int
+    start_time_utc: datetime
+    end_time_utc: datetime
+    step_seconds: int = Field(60, ge=1)
+
+    @model_validator(mode='after')
+    def validate_window(self) -> 'CatalogECIEphemerisRequest':
+        if self.end_time_utc <= self.start_time_utc:
+            raise ValueError("end_time_utc must be after start_time_utc")
+        duration = (self.end_time_utc - self.start_time_utc).total_seconds()
+        if duration / self.step_seconds > 5000:
+            raise ValueError("Too many ECI ephemeris points (limit 5000)")
+        return self
+
+class ECIStatePoint(BaseModel):
+    timestamp_utc: datetime
+    pos_x_km: float
+    pos_y_km: float
+    pos_z_km: float
+    vel_x_kms: float
+    vel_y_kms: float
+    vel_z_kms: float
+
+    model_config = ConfigDict(from_attributes=True)
+
 class GeoPosition(BaseModel):
     timestamp_utc: datetime
     latitude_deg: float

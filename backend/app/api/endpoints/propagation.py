@@ -7,9 +7,12 @@ from app.schemas.physics import (
     EphemerisRequest,
     CatalogPropagationRequest,
     CatalogEphemerisRequest,
-    SatelliteState
+    CatalogECIRequest,
+    CatalogECIEphemerisRequest,
+    ECIStatePoint,
+    SatelliteState,
 )
-from app.services.astrodynamics import propagate_state, generate_ephemeris
+from app.services.astrodynamics import propagate_state, generate_ephemeris, get_eci_state, generate_eci_ephemeris
 from app.services.catalog_lookup import get_catalog_object_with_latest_tle
 
 router = APIRouter()
@@ -82,7 +85,7 @@ def generate_catalog_ephemeris(req: CatalogEphemerisRequest, db: Session = Depen
     rso, tle = lookup
     try:
         ephemeris = generate_ephemeris(
-            rso.name, tle.line1, tle.line2, 
+            rso.name, tle.line1, tle.line2,
             req.start_time_utc, req.end_time_utc, req.step_seconds
         )
         return ephemeris
@@ -91,3 +94,34 @@ def generate_catalog_ephemeris(req: CatalogEphemerisRequest, db: Session = Depen
             status_code=400,
             detail=f"Ephemeris generation failed: {str(e)}"
         )
+
+@router.post("/catalog/eci-state", response_model=ECIStatePoint)
+def get_catalog_eci_state(req: CatalogECIRequest, db: Session = Depends(get_db)):
+    """
+    Return the GCRS/ECI position and velocity vectors for a catalog object at a given epoch.
+    Used by the Research Lab Numerical Experiment module as integration initial conditions.
+    """
+    lookup = get_catalog_object_with_latest_tle(db, req.norad_id)
+    if not lookup:
+        raise HTTPException(status_code=404, detail=f"NORAD {req.norad_id} not found or lacks TLE data.")
+    rso, tle = lookup
+    try:
+        return get_eci_state(rso.name, tle.line1, tle.line2, req.timestamp_utc)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"ECI state computation failed: {str(e)}")
+
+@router.post("/catalog/eci-ephemeris", response_model=List[ECIStatePoint])
+def get_catalog_eci_ephemeris(req: CatalogECIEphemerisRequest, db: Session = Depends(get_db)):
+    """
+    Return an ECI (GCRS) state-vector timeseries for a catalog object.
+    Used by the Research Lab Numerical Experiment module for SGP4 baseline comparison.
+    """
+    lookup = get_catalog_object_with_latest_tle(db, req.norad_id)
+    if not lookup:
+        raise HTTPException(status_code=404, detail=f"NORAD {req.norad_id} not found or lacks TLE data.")
+    rso, tle = lookup
+    try:
+        return generate_eci_ephemeris(rso.name, tle.line1, tle.line2,
+                                      req.start_time_utc, req.end_time_utc, req.step_seconds)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"ECI ephemeris failed: {str(e)}")

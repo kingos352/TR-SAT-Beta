@@ -713,6 +713,42 @@ export async function getAdvancedRelativeMotion(primaryId: number, secondaryId: 
   return apiRequest<RelativeMotionResult>(`${API_BASE_URL}/api/v1/advanced-research/relative-motion?primary_id=${primaryId}&secondary_id=${secondaryId}&tca_utc=${encodeURIComponent(tcaUtc)}`);
 }
 
+// --- ECI STATE (Numerical Experiment) ---
+
+export interface ECIStatePoint {
+  timestamp_utc: string;
+  pos_x_km: number;
+  pos_y_km: number;
+  pos_z_km: number;
+  vel_x_kms: number;
+  vel_y_kms: number;
+  vel_z_kms: number;
+}
+
+export async function getCatalogECIState(payload: {
+  norad_id: number;
+  timestamp_utc: string;
+}): Promise<ECIStatePoint> {
+  return apiRequest<ECIStatePoint>(`${API_BASE_URL}/api/v1/propagation/catalog/eci-state`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getCatalogECIEphemeris(payload: {
+  norad_id: number;
+  start_time_utc: string;
+  end_time_utc: string;
+  step_seconds: number;
+}): Promise<ECIStatePoint[]> {
+  return apiRequest<ECIStatePoint[]>(`${API_BASE_URL}/api/v1/propagation/catalog/eci-ephemeris`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
 // --- USER SATELLITES ---
 
 export interface TLEInput { line1: string; line2: string; epoch_utc?: string; }

@@ -8,6 +8,7 @@ import type {
   PassWindow,
   RelativeMotionResult,
   ConjunctionResult,
+  ECIStatePoint,
 } from '../../api/client';
 
 const MU = 398600.4418;
@@ -411,6 +412,197 @@ const ValidationModule: React.FC<{ noradId: number; objectName: string }> = ({ n
   );
 };
 
+// ─── Numerical Experiment module ────────────────────────────────────────────
+
+const MU_NUM  = 398600.4418;   // km³/s²
+const J2_COEF = 1.08262668e-3;
+const RE_NUM  = 6378.137;      // km
+
+function j2Accel(x: number, y: number, z: number): [number, number, number] {
+  const r2 = x*x + y*y + z*z;
+  const r  = Math.sqrt(r2);
+  const r3 = r2 * r;
+  const f  = -MU_NUM / r3;
+  const c  = 1.5 * J2_COEF * (RE_NUM * RE_NUM / r2);
+  const zr2 = (z / r) * (z / r);
+  return [
+    f * x * (1 - c * (5 * zr2 - 1)),
+    f * y * (1 - c * (5 * zr2 - 1)),
+    f * z * (1 - c * (5 * zr2 - 3)),
+  ];
+}
+
+function rk4Step(state: number[], dt: number): number[] {
+  const deriv = (s: number[]) => {
+    const [px, py, pz, vx, vy, vz] = s;
+    const [ax, ay, az] = j2Accel(px, py, pz);
+    return [vx, vy, vz, ax, ay, az];
+  };
+  const add = (a: number[], b: number[], h: number) => a.map((v, i) => v + h * b[i]);
+  const k1 = deriv(state);
+  const k2 = deriv(add(state, k1, dt / 2));
+  const k3 = deriv(add(state, k2, dt / 2));
+  const k4 = deriv(add(state, k3, dt));
+  return state.map((v, i) => v + (dt / 6) * (k1[i] + 2*k2[i] + 2*k3[i] + k4[i]));
+}
+
+interface NumericalPoint { minutesFromEpoch: number; diffKm: number; numAltKm: number; sgp4AltKm: number; }
+
+const NumericalExperimentModule: React.FC<{ noradId: number; objectName: string }> = ({ noradId, objectName }) => {
+  const [windowHours, setWindowHours] = useState(6);
+  const [stepSec, setStepSec]         = useState(120);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState<string | null>(null);
+  const [points, setPoints]           = useState<NumericalPoint[]>([]);
+
+  const run = useCallback(async () => {
+    setLoading(true); setError(null); setPoints([]);
+    try {
+      const { getCatalogECIState, getCatalogECIEphemeris } = await import('../../api/client');
+      const t0 = new Date();
+      const t1 = new Date(t0.getTime() + windowHours * 3600 * 1000);
+
+      // ECI initial state (pos + vel) from SGP4 at t0
+      const ic = await getCatalogECIState({ norad_id: noradId, timestamp_utc: t0.toISOString() });
+
+      // SGP4 ECI ephemeris baseline
+      const sgp4Track: ECIStatePoint[] = await getCatalogECIEphemeris({
+        norad_id: noradId,
+        start_time_utc: t0.toISOString(),
+        end_time_utc: t1.toISOString(),
+        step_seconds: stepSec,
+      });
+
+      // J2+RK4 numerical integration from same initial conditions
+      let state = [ic.pos_x_km, ic.pos_y_km, ic.pos_z_km, ic.vel_x_kms, ic.vel_y_kms, ic.vel_z_kms];
+      const result: NumericalPoint[] = [];
+
+      sgp4Track.forEach((sgp4, idx) => {
+        if (idx > 0) {
+          // advance numerical integrator by stepSec using sub-steps of 30s for accuracy
+          const subStep = Math.min(30, stepSec);
+          const nSub = Math.round(stepSec / subStep);
+          for (let s = 0; s < nSub; s++) state = rk4Step(state, subStep);
+        }
+        const [nx, ny, nz] = state;
+        const dx = nx - sgp4.pos_x_km;
+        const dy = ny - sgp4.pos_y_km;
+        const dz = nz - sgp4.pos_z_km;
+        const diffKm = Math.sqrt(dx*dx + dy*dy + dz*dz);
+        const numAltKm  = Math.sqrt(nx*nx + ny*ny + nz*nz) - RE_NUM;
+        const sgp4r = Math.sqrt(sgp4.pos_x_km**2 + sgp4.pos_y_km**2 + sgp4.pos_z_km**2);
+        const sgp4AltKm = sgp4r - RE_NUM;
+        result.push({ minutesFromEpoch: idx * stepSec / 60, diffKm, numAltKm, sgp4AltKm });
+      });
+
+      setPoints(result);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [noradId, windowHours, stepSec]);
+
+  const exportCsv = () => {
+    if (!points.length) return;
+    const rows = ['time_min,diff_km,j2_alt_km,sgp4_alt_km',
+      ...points.map(p => `${p.minutesFromEpoch.toFixed(1)},${p.diffKm.toFixed(4)},${p.numAltKm.toFixed(3)},${p.sgp4AltKm.toFixed(3)}`)
+    ].join('\n');
+    const blob = new Blob([rows], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `trsat_numerical_${noradId}_${windowHours}h.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const maxDiff = points.length ? Math.max(...points.map(p => p.diffKm)) : null;
+  const finalDiff = points.length ? points[points.length - 1].diffKm : null;
+
+  const chartData = points.map(p => ({ x: p.minutesFromEpoch, y: p.diffKm }));
+  const altData   = points.map(p => ({ x: p.minutesFromEpoch, y: p.numAltKm - p.sgp4AltKm }));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '18px', overflowY: 'auto', height: '100%' }}>
+      <Disclaimer text={
+        'Experimental — J2+RK4 vs SGP4 comparison. The numerical integrator includes only J2 oblateness. ' +
+        'Atmospheric drag, lunar/solar gravity, SRP, and higher-order harmonics are excluded. ' +
+        'SGP4 implicitly accounts for drag via the BSTAR term. ' +
+        'Position differences reflect model differences, not physical truth. ' +
+        'Both start from the same SGP4 initial state — divergence grows with integration time.'
+      } />
+
+      <Card title="Experiment Configuration">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+          <div>
+            <div style={lbl}>Time Window (hours)</div>
+            <input
+              type="number" value={windowHours} min={1} max={48}
+              onChange={e => setWindowHours(Number(e.target.value))}
+              style={{ ...inputStyle }}
+            />
+          </div>
+          <div>
+            <div style={lbl}>Output Step (seconds)</div>
+            <input
+              type="number" value={stepSec} min={30} max={600} step={30}
+              onChange={e => setStepSec(Number(e.target.value))}
+              style={{ ...inputStyle }}
+            />
+          </div>
+        </div>
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+          Object: <strong style={{ color: 'var(--text-primary)' }}>{objectName}</strong> · NORAD {noradId} · Model A: SGP4 (Skyfield) · Model B: J2+RK4 (JS)
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={run} disabled={loading} style={{ ...primaryBtn, opacity: loading ? 0.7 : 1 }}>
+            {loading ? 'Computing…' : 'Run Experiment'}
+          </button>
+          {points.length > 0 && (
+            <button onClick={exportCsv} style={ghostBtn}>Export CSV</button>
+          )}
+        </div>
+        {error && <div style={{ marginTop: '8px', fontSize: '11px', color: 'var(--accent-danger)' }}>Error: {error}</div>}
+      </Card>
+
+      {points.length > 0 && (
+        <>
+          <Card title="Position Divergence: SGP4 vs J2+RK4 (km)">
+            <LineChart
+              data={chartData}
+              width={640} height={200}
+              xLabel="Time (min)"
+              yLabel="3D Position Difference (km)"
+              color="#f97316"
+            />
+          </Card>
+
+          <Card title="Altitude Difference: J2+RK4 − SGP4 (km)">
+            <LineChart
+              data={altData}
+              width={640} height={160}
+              xLabel="Time (min)"
+              yLabel="Alt Diff (km)"
+              color="#22d3ee"
+            />
+          </Card>
+
+          <Card title="Divergence Summary">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              <Field label="Max 3D Divergence" value={maxDiff != null ? `${maxDiff.toFixed(3)} km` : '—'} mono />
+              <Field label={`At t = ${windowHours}h`} value={finalDiff != null ? `${finalDiff.toFixed(3)} km` : '—'} mono />
+              <Field label="Timesteps" value={points.length} mono />
+            </div>
+            <div style={{ marginTop: '10px', fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              ⓘ J2+RK4 integrates only Earth oblateness (J2). SGP4 also includes drag (BSTAR), luni-solar perturbations,
+              and resonance terms. Divergence is expected — it quantifies the drag+higher-order effect, not error.
+            </div>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+};
+
 // ─── Reproducibility module ──────────────────────────────────────────────────
 
 const SCHEMAS = [
@@ -734,6 +926,7 @@ export const ResearchLabWorkspace: React.FC = () => {
     if (moduleId === 'relative')    return <RelativeMotionModule  primaryId={activeObject.norad_id} primaryName={activeObject.name} />;
     if (moduleId === 'validation')  return <ValidationModule      noradId={activeObject.norad_id} objectName={activeObject.name} />;
     if (moduleId === 'conjunction')  return <ConjunctionStudyModule />;
+    if (moduleId === 'numerical')    return <NumericalExperimentModule noradId={activeObject.norad_id} objectName={activeObject.name} />;
     if (moduleId === 'repro')        return <ReproducibilityModule />;
 
     if (moduleId !== 'overview') return (
