@@ -1,78 +1,430 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { FlaskConical } from 'lucide-react';
 import { useConsoleStore } from '../../store/useConsoleStore';
 import { useTranslation } from '../../i18n/useTranslation';
+import { LineChart } from '../Console/Charts/LineChart';
+import type {
+  HistoricalTLEPoint,
+  PassWindow,
+  RelativeMotionResult,
+} from '../../api/client';
 
-const MU = 398600.4418; // km^3/s^2 (Earth GM)
-const R_EARTH = 6378.137; // km
+const MU = 398600.4418;
+const R_EARTH = 6378.137;
 const SOFTWARE_VERSION = '3.0.0';
 
-type ModuleId =
-  | 'overview'
-  | 'validation'
-  | 'evolution'
-  | 'passes'
-  | 'relative'
-  | 'conjunction'
-  | 'numerical'
-  | 'repro';
+type ModuleId = 'overview' | 'validation' | 'evolution' | 'passes' | 'relative' | 'conjunction' | 'numerical' | 'repro';
 
-const labelStyle: React.CSSProperties = { fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' };
-const valueStyle: React.CSSProperties = { fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 };
-const sectionTitle: React.CSSProperties = {
-  fontSize: '10px',
-  fontWeight: 700,
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
-  color: 'var(--text-muted)',
-  marginBottom: '10px',
-};
+// ─── tiny shared primitives ──────────────────────────────────────────────────
+
+const lbl: React.CSSProperties = { fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px' };
+const val: React.CSSProperties = { fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 };
+const secTitle: React.CSSProperties = { fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px' };
 
 const Field: React.FC<{ label: string; value: React.ReactNode; mono?: boolean }> = ({ label, value, mono }) => (
-  <div>
-    <div style={labelStyle}>{label}</div>
-    <div className={mono ? 'mono-text' : undefined} style={valueStyle}>
-      {value}
-    </div>
-  </div>
+  <div><div style={lbl}>{label}</div><div className={mono ? 'mono-text' : undefined} style={val}>{value}</div></div>
 );
 
 const Card: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div
-    style={{
-      background: 'var(--bg-panel-soft)',
-      border: '1px solid var(--border-subtle)',
-      borderRadius: 'var(--radius-md)',
-      padding: '16px',
-    }}
-  >
-    <div style={sectionTitle}>{title}</div>
+  <div style={{ background: 'var(--bg-panel-soft)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+    <div style={secTitle}>{title}</div>
     {children}
   </div>
 );
 
-/**
- * Research Lab — a dedicated, full-viewport research workspace (overlay) rather
- * than an accordion panel. Phase 3 V1 implements the Research Overview module
- * (object summary, data provenance, derived orbit summary) plus a reproducible
- * JSON Research Record export. The remaining modules are structurally present
- * and show a "planned" state.
- */
+const Spinner: React.FC = () => (
+  <div style={{ width: 20, height: 20, border: '2px solid rgba(37,183,255,0.15)', borderTop: '2px solid var(--accent-blue)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+);
+
+const Disclaimer: React.FC<{ text: string }> = ({ text }) => (
+  <div style={{ fontSize: '10px', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '8px 10px', lineHeight: 1.5 }}>
+    ⓘ {text}
+  </div>
+);
+
+const primaryBtn: React.CSSProperties = { padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--accent-blue)', color: '#050B14', fontSize: '12px', fontWeight: 700, cursor: 'pointer' };
+const ghostBtn: React.CSSProperties = { padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: 'transparent', color: 'var(--text-muted)', fontSize: '12px', fontWeight: 500, cursor: 'pointer' };
+
+const inputStyle: React.CSSProperties = { padding: '6px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', background: 'rgba(0,0,0,0.3)', color: 'var(--text-primary)', fontSize: '12px', outline: 'none', fontFamily: 'var(--font-ui)', width: '100%', boxSizing: 'border-box' };
+
+// ─── Orbit Evolution module ──────────────────────────────────────────────────
+
+const OrbitEvolutionModule: React.FC<{ noradId: number; objectName: string }> = ({ noradId, objectName }) => {
+  const [points, setPoints] = useState<HistoricalTLEPoint[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [metric, setMetric] = useState<'mm' | 'perigee' | 'apogee' | 'incl' | 'ecc' | 'bstar'>('mm');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError(null);
+    try {
+      const { getHistoricalTLEs } = await import('../../api/client');
+      const data = await getHistoricalTLEs(noradId);
+      setPoints(data);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [noradId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const metricOptions: { id: typeof metric; label: string; unit: string }[] = [
+    { id: 'mm', label: 'Mean Motion', unit: 'rev/day' },
+    { id: 'perigee', label: 'Perigee', unit: 'km' },
+    { id: 'apogee', label: 'Apogee', unit: 'km' },
+    { id: 'incl', label: 'Inclination', unit: '°' },
+    { id: 'ecc', label: 'Eccentricity', unit: '' },
+    { id: 'bstar', label: 'BSTAR', unit: '' },
+  ];
+
+  const getY = (p: HistoricalTLEPoint): number => {
+    const a = p.mean_motion > 0 ? Math.cbrt(MU / Math.pow((p.mean_motion * 2 * Math.PI) / 86400, 2)) : 0;
+    switch (metric) {
+      case 'mm': return p.mean_motion;
+      case 'perigee': return a > 0 ? a * (1 - p.eccentricity) - R_EARTH : 0;
+      case 'apogee':  return a > 0 ? a * (1 + p.eccentricity) - R_EARTH : 0;
+      case 'incl':    return p.inclination;
+      case 'ecc':     return p.eccentricity;
+      case 'bstar':   return p.bstar;
+    }
+  };
+
+  const chartData = points.map((p, i) => ({ x: i, y: getY(p) }));
+  const cur = metricOptions.find(m => m.id === metric)!;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '18px', overflowY: 'auto', height: '100%' }}>
+      <Card title="Orbit Evolution">
+        <div style={{ marginBottom: '10px', fontSize: '11px', color: 'var(--text-muted)' }}>
+          {objectName} · {points.length} historical records
+        </div>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
+          {metricOptions.map(m => (
+            <button key={m.id} onClick={() => setMetric(m.id)} style={{ ...ghostBtn, ...(metric === m.id ? { borderColor: 'var(--accent-blue)', color: 'var(--accent-blue)', background: 'rgba(37,183,255,0.08)' } : {}) }}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+        {loading && <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Spinner /><span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading…</span></div>}
+        {error && <div style={{ color: 'var(--accent-danger)', fontSize: 12 }}>{error}</div>}
+        {!loading && !error && points.length < 2 && (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '20px 0' }}>
+            Insufficient historical TLE records. Sync this object over time to build an evolution timeline.
+          </div>
+        )}
+        {!loading && !error && points.length >= 2 && (
+          <LineChart data={chartData} width={560} height={200} color="var(--accent-cyan)" yLabel={`${cur.label} (${cur.unit})`} xLabel="Record index (oldest → newest)" />
+        )}
+      </Card>
+      <Disclaimer text="Historical TLE evolution is derived from publicly available orbital elements. Trend indicators are heuristic — not a high-fidelity orbit determination product." />
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={load} style={ghostBtn}>Refresh</button>
+        {!loading && points.length > 0 && (
+          <button
+            onClick={() => {
+              const csv = ['epoch,mean_motion,inclination,eccentricity,bstar', ...points.map(p => `${p.epoch},${p.mean_motion},${p.inclination},${p.eccentricity},${p.bstar}`)].join('\n');
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = `trsat_evolution_${noradId}.csv`; a.click(); URL.revokeObjectURL(url);
+            }}
+            style={primaryBtn}
+          >
+            Export CSV
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Pass Analysis module ────────────────────────────────────────────────────
+
+const PassAnalysisModule: React.FC<{ noradId: number; objectName: string }> = ({ noradId, objectName }) => {
+  const observer = useConsoleStore(s => s.observer);
+  const [passes, setPasses] = useState<PassWindow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [horizonDays, setHorizonDays] = useState(3);
+  const [minElev, setMinElev] = useState(10);
+
+  const run = useCallback(async () => {
+    setLoading(true); setError(null);
+    try {
+      const { getCatalogPasses } = await import('../../api/client');
+      const now = new Date();
+      const end = new Date(now.getTime() + horizonDays * 86400_000);
+      const data = await getCatalogPasses({
+        norad_id: noradId,
+        observer_latitude_deg: observer.latitude_deg,
+        observer_longitude_deg: observer.longitude_deg,
+        observer_elevation_m: observer.elevation_m,
+        start_time_utc: now.toISOString(),
+        end_time_utc: end.toISOString(),
+        min_elevation_deg: minElev,
+      });
+      setPasses(data);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [noradId, observer, horizonDays, minElev]);
+
+  const dur = (aos: string, los: string) => {
+    const s = Math.round((new Date(los).getTime() - new Date(aos).getTime()) / 1000);
+    return `${Math.floor(s / 60)}m ${s % 60}s`;
+  };
+  const ts = (s: string) => s.replace('T', ' ').substring(0, 16);
+
+  const exportPasses = () => {
+    const csv = ['AOS_UTC,TCA_UTC,LOS_UTC,MaxEl_deg,Duration', ...passes.map(p => `${p.aos_time_utc},${p.max_time_utc},${p.los_time_utc},${p.max_elevation_deg.toFixed(1)},${dur(p.aos_time_utc, p.los_time_utc)}`)].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `trsat_passes_${noradId}.csv`; a.click(); URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '18px', overflowY: 'auto', height: '100%' }}>
+      <Card title="Pass Analysis">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+          <div>
+            <div style={lbl}>Horizon (days)</div>
+            <input type="number" min={1} max={14} value={horizonDays} onChange={e => setHorizonDays(Number(e.target.value))} style={inputStyle} />
+          </div>
+          <div>
+            <div style={lbl}>Min Elevation (°)</div>
+            <input type="number" min={0} max={90} value={minElev} onChange={e => setMinElev(Number(e.target.value))} style={inputStyle} />
+          </div>
+        </div>
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+          Station: {observer.name} · {objectName}
+        </div>
+        <button onClick={run} disabled={loading} style={primaryBtn}>
+          {loading ? <Spinner /> : 'Compute Passes'}
+        </button>
+        {error && <div style={{ color: 'var(--accent-danger)', fontSize: 12, marginTop: 8 }}>{error}</div>}
+      </Card>
+
+      {passes.length > 0 && (
+        <Card title={`Results (${passes.length} geometric passes)`}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              Best: {passes.reduce((b, p) => p.max_elevation_deg > b.max_elevation_deg ? p : b).max_elevation_deg.toFixed(1)}° max el
+            </div>
+            <button onClick={exportPasses} style={ghostBtn}>Export CSV</button>
+          </div>
+          <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {passes.map((p, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 60px 50px', gap: '8px', fontSize: '11px', padding: '5px 8px', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', borderLeft: `2px solid ${p.max_elevation_deg >= 60 ? 'var(--accent-success)' : p.max_elevation_deg >= 20 ? 'var(--accent-blue)' : 'var(--border-subtle)'}` }}>
+                <span className="mono-text" style={{ color: 'var(--text-muted)' }}>{ts(p.aos_time_utc)}</span>
+                <span className="mono-text" style={{ color: 'var(--text-muted)' }}>{ts(p.max_time_utc)}</span>
+                <span className="mono-text" style={{ color: 'var(--text-muted)' }}>{ts(p.los_time_utc)}</span>
+                <span className="mono-text" style={{ color: 'var(--accent-blue)' }}>{p.max_elevation_deg.toFixed(1)}°</span>
+                <span className="mono-text" style={{ color: 'var(--text-muted)' }}>{dur(p.aos_time_utc, p.los_time_utc)}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <Disclaimer text="Pass predictions use TLE/GP-based SGP4 propagation and observer topocentric geometry. Geometric passes only — not guaranteed optical visibility." />
+    </div>
+  );
+};
+
+// ─── Relative Motion module ──────────────────────────────────────────────────
+
+const RelativeMotionModule: React.FC<{ primaryId: number; primaryName: string }> = ({ primaryId, primaryName }) => {
+  const [secondaryId, setSecondaryId] = useState('');
+  const [windowH, setWindowH] = useState(24);
+  const [result, setResult] = useState<RelativeMotionResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const run = async () => {
+    const secId = parseInt(secondaryId.trim(), 10);
+    if (!secId) { setError('Enter a valid secondary NORAD ID.'); return; }
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const { getAdvancedRelativeMotion } = await import('../../api/client');
+      const now = new Date();
+      const tca = new Date(now.getTime() + (windowH / 2) * 3600_000).toISOString();
+      const data = await getAdvancedRelativeMotion(primaryId, secId, tca);
+      setResult(data);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const chartData = result?.distance_curve?.map((pt, i) => ({ x: i, y: pt.distance_km })) ?? [];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '18px', overflowY: 'auto', height: '100%' }}>
+      <Card title="Relative Motion">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+          <div>
+            <div style={lbl}>Primary</div>
+            <div style={{ ...val, color: 'var(--accent-blue)' }}>{primaryName} ({primaryId})</div>
+          </div>
+          <div>
+            <div style={lbl}>Secondary NORAD ID</div>
+            <input type="number" min={1} placeholder="e.g. 25545" value={secondaryId} onChange={e => setSecondaryId(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <div style={lbl}>Window (hours)</div>
+            <input type="number" min={1} max={168} value={windowH} onChange={e => setWindowH(Number(e.target.value))} style={inputStyle} />
+          </div>
+        </div>
+        <button onClick={run} disabled={loading} style={primaryBtn}>
+          {loading ? <Spinner /> : 'Analyse Relative Motion'}
+        </button>
+        {error && <div style={{ color: 'var(--accent-danger)', fontSize: 12, marginTop: 8 }}>{error}</div>}
+      </Card>
+
+      {result && (
+        <Card title="Distance vs Time">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+            <Field label="TCA" value={result.tca_utc.replace('T', ' ').substring(0, 19) + ' UTC'} mono />
+            <Field label="Relative Speed at TCA" value={`${result.relative_speed_kmps.toFixed(3)} km/s`} mono />
+          </div>
+          <LineChart data={chartData} width={520} height={180} color="var(--accent-cyan)" yLabel="Distance (km)" xLabel="Step index" />
+          <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
+            <button onClick={() => {
+              const csv = ['timestamp_utc,distance_km', ...(result.distance_curve ?? []).map(pt => `${pt.timestamp_utc},${pt.distance_km}`)].join('\n');
+              const blob = new Blob([csv], { type: 'text/csv' });
+              const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `trsat_relative_${primaryId}_${result.secondary_id}.csv`; a.click(); URL.revokeObjectURL(url);
+            }} style={ghostBtn}>Export CSV</button>
+          </div>
+        </Card>
+      )}
+
+      <Disclaimer text="Geometric distance analysis, not a collision probability estimate. No covariance used. Both objects must be in the local catalog." />
+    </div>
+  );
+};
+
+// ─── Validation Center module ────────────────────────────────────────────────
+
+interface RefValues { lat: string; lon: string; alt: string; provider: string; timestamp: string; note: string }
+
+const ValidationModule: React.FC<{ noradId: number; objectName: string }> = ({ noradId, objectName }) => {
+  const activeState = useConsoleStore(s => s.activeState);
+  const [ref, setRef] = useState<RefValues>({ lat: '', lon: '', alt: '', provider: 'External (manual)', timestamp: '', note: '' });
+
+  const diff = (tr: number | null | undefined, refStr: string): { d: string; ok: boolean } | null => {
+    if (tr == null || !refStr) return null;
+    const r = parseFloat(refStr);
+    if (isNaN(r)) return null;
+    const d = Math.abs(tr - r);
+    return { d: d.toFixed(4), ok: d < 0.5 };
+  };
+
+  const latDiff = diff(activeState?.latitude_deg, ref.lat);
+  const lonDiff = diff(activeState?.longitude_deg, ref.lon);
+  const altDiff = diff(activeState?.altitude_km, ref.alt);
+
+  const exportValidation = () => {
+    const record = {
+      schema: 'trsat.validation_comparison',
+      schema_version: 1,
+      created_at_utc: new Date().toISOString(),
+      object: { norad_id: noradId, name: objectName },
+      trsat_values: {
+        latitude_deg: activeState?.latitude_deg ?? null,
+        longitude_deg: activeState?.longitude_deg ?? null,
+        altitude_km: activeState?.altitude_km ?? null,
+        tle_epoch_utc: activeState?.tle_epoch_utc ?? null,
+        tle_age_days: activeState?.tle_age_days ?? null,
+        reliability: activeState?.reliability_status ?? null,
+        propagation_model: 'SGP4',
+      },
+      reference_values: { ...ref },
+      differences: {
+        latitude_deg: latDiff?.d ?? null,
+        longitude_deg: lonDiff?.d ?? null,
+        altitude_km: altDiff?.d ?? null,
+      },
+      notes: 'External reference comparison. Source validity not verified.',
+    };
+    const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `trsat_validation_${noradId}.json`; a.click(); URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '18px', overflowY: 'auto', height: '100%' }}>
+      <Card title="TR-SAT Predicted Values">
+        {!activeState ? (
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            No predicted state. Open the right panel → Predicted Orbital State → Refresh State first.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+            <Field label="Latitude" value={`${activeState.latitude_deg.toFixed(4)}°`} mono />
+            <Field label="Longitude" value={`${activeState.longitude_deg.toFixed(4)}°`} mono />
+            <Field label="Altitude" value={`${activeState.altitude_km.toFixed(1)} km`} mono />
+            <Field label="TLE Epoch" value={activeState.tle_epoch_utc?.replace('T', ' ').substring(0, 19) ?? '—'} mono />
+            <Field label="Element Age" value={activeState.tle_age_days != null ? `${activeState.tle_age_days.toFixed(2)} days` : '—'} mono />
+            <Field label="Model" value="SGP4" />
+          </div>
+        )}
+      </Card>
+
+      <Card title="Reference Input (manual)">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div><div style={lbl}>Reference Provider</div><input value={ref.provider} onChange={e => setRef(r => ({ ...r, provider: e.target.value }))} style={inputStyle} /></div>
+          <div><div style={lbl}>Reference Timestamp (UTC)</div><input placeholder="2026-05-30 12:00:00" value={ref.timestamp} onChange={e => setRef(r => ({ ...r, timestamp: e.target.value }))} style={inputStyle} /></div>
+          <div><div style={lbl}>Latitude (°)</div><input type="number" step="0.0001" placeholder="e.g. 38.62" value={ref.lat} onChange={e => setRef(r => ({ ...r, lat: e.target.value }))} style={inputStyle} /></div>
+          <div><div style={lbl}>Longitude (°)</div><input type="number" step="0.0001" placeholder="e.g. 34.71" value={ref.lon} onChange={e => setRef(r => ({ ...r, lon: e.target.value }))} style={inputStyle} /></div>
+          <div><div style={lbl}>Altitude (km)</div><input type="number" step="0.1" placeholder="e.g. 421.5" value={ref.alt} onChange={e => setRef(r => ({ ...r, alt: e.target.value }))} style={inputStyle} /></div>
+          <div><div style={lbl}>Note</div><input placeholder="Source URL / screenshot label" value={ref.note} onChange={e => setRef(r => ({ ...r, note: e.target.value }))} style={inputStyle} /></div>
+        </div>
+      </Card>
+
+      {(latDiff || lonDiff || altDiff) && (
+        <Card title="Comparison">
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 80px', gap: '8px', fontSize: '11px' }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>Metric</span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>TR-SAT</span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>Reference</span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>|Diff|</span>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>Status</span>
+            {[
+              { metric: 'Latitude (°)', tr: activeState?.latitude_deg?.toFixed(4) ?? '—', ref: ref.lat || '—', d: latDiff },
+              { metric: 'Longitude (°)', tr: activeState?.longitude_deg?.toFixed(4) ?? '—', ref: ref.lon || '—', d: lonDiff },
+              { metric: 'Altitude (km)', tr: activeState?.altitude_km?.toFixed(1) ?? '—', ref: ref.alt || '—', d: altDiff },
+            ].map(row => (
+              <React.Fragment key={row.metric}>
+                <span>{row.metric}</span>
+                <span className="mono-text">{row.tr}</span>
+                <span className="mono-text">{row.ref}</span>
+                <span className="mono-text">{row.d?.d ?? '—'}</span>
+                <span style={{ color: row.d ? (row.d.ok ? 'var(--accent-success)' : 'var(--accent-warning)') : 'var(--text-muted)' }}>
+                  {row.d ? (row.d.ok ? 'Consistent' : 'Review') : '—'}
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
+          <div style={{ marginTop: '12px' }}>
+            <button onClick={exportValidation} style={primaryBtn}>Export Validation Record (JSON)</button>
+          </div>
+        </Card>
+      )}
+
+      <Disclaimer text="External Reference Comparison — not absolute validation. TR-SAT values are SGP4 propagated estimates from orbital elements. Reference source validity, epoch, and propagation method are not verified. This record is for research transparency only." />
+    </div>
+  );
+};
+
+// ─── Main workspace ──────────────────────────────────────────────────────────
+
 export const ResearchLabWorkspace: React.FC = () => {
   const { t } = useTranslation();
-  const open = useConsoleStore((s) => s.researchLabOpen);
-  const setOpen = useConsoleStore((s) => s.setResearchLabOpen);
-  const activeObject = useConsoleStore((s) => s.activeObject);
-  const activeState = useConsoleStore((s) => s.activeState);
-  const reliability = useConsoleStore((s) => s.activeObjectReliability);
-  const addLog = useConsoleStore((s) => s.addLog);
+  const open = useConsoleStore(s => s.researchLabOpen);
+  const setOpen = useConsoleStore(s => s.setResearchLabOpen);
+  const activeObject = useConsoleStore(s => s.activeObject);
+  const activeState = useConsoleStore(s => s.activeState);
+  const reliability = useConsoleStore(s => s.activeObjectReliability);
+  const addLog = useConsoleStore(s => s.addLog);
   const [moduleId, setModuleId] = useState<ModuleId>('overview');
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, setOpen]);
@@ -86,107 +438,70 @@ export const ResearchLabWorkspace: React.FC = () => {
   const aKm = mm && mm > 0 ? Math.cbrt(MU / Math.pow((mm * 2 * Math.PI) / 86400, 2)) : null;
   const perigeeKm = aKm != null && ecc != null ? aKm * (1 - ecc) - R_EARTH : null;
   const apogeeKm = aKm != null && ecc != null ? aKm * (1 + ecc) - R_EARTH : null;
-
   const epoch = tle?.epoch ?? activeState?.tle_epoch_utc ?? reliability?.tle_epoch_utc ?? null;
   const ageDays = activeState?.tle_age_days ?? reliability?.tle_age_days ?? null;
   const reliabilityLabel = reliability?.reliability_label ?? activeState?.reliability_status ?? 'UNKNOWN';
   const sourceFormat = tle?.source_format ?? 'TLE';
-  const formatLabel = sourceFormat === 'OMM_JSON' ? 'OMM JSON' : sourceFormat === 'TLE' ? 'Legacy TLE' : sourceFormat;
+  const formatLabel = sourceFormat === 'OMM_JSON' ? 'OMM JSON' : 'Legacy TLE';
 
   const fmt = (v: number | null | undefined, digits = 2, unit = '') =>
     v == null || !isFinite(v) ? '—' : `${v.toFixed(digits)}${unit ? ' ' + unit : ''}`;
-  const fmtEpoch = (s: string | null) => (s ? s.replace('T', ' ').substring(0, 19) + ' UTC' : '—');
+  const fmtEpoch = (s: string | null) => s ? s.replace('T', ' ').substring(0, 19) + ' UTC' : '—';
+
+  const confidenceColor =
+    reliabilityLabel === 'FRESH' ? 'var(--accent-success)' :
+    reliabilityLabel === 'AGING' ? 'var(--accent-warning)' :
+    reliabilityLabel === 'STALE' ? 'var(--accent-danger)' : 'var(--text-muted)';
 
   const exportRecord = () => {
     if (!activeObject) return;
     const record = {
-      schema: 'trsat.research_record',
-      schema_version: 1,
-      analysis_type: 'overview',
-      created_at_utc: new Date().toISOString(),
+      schema: 'trsat.research_record', schema_version: 1,
+      analysis_type: 'overview', created_at_utc: new Date().toISOString(),
       software_version: SOFTWARE_VERSION,
-      object: {
-        norad_id: activeObject.norad_id,
-        name: activeObject.name,
-        cospar_id: activeObject.cospar_id ?? null,
-        object_type: activeObject.object_type,
-        category: activeObject.category,
-      },
-      data_provenance: {
-        source_provider: activeObject.source,
-        source_format: sourceFormat,
-        element_epoch_utc: epoch,
-        element_age_days: ageDays,
-        reliability: reliabilityLabel,
-        ingested_at_utc: tle?.ingested_at ?? null,
-      },
+      object: { norad_id: activeObject.norad_id, name: activeObject.name, cospar_id: activeObject.cospar_id ?? null, object_type: activeObject.object_type, category: activeObject.category },
+      data_provenance: { source_provider: activeObject.source, source_format: sourceFormat, element_epoch_utc: epoch, element_age_days: ageDays, reliability: reliabilityLabel, ingested_at_utc: tle?.ingested_at ?? null },
       propagation_model: 'SGP4',
-      orbit_summary: {
-        inclination_deg: tle?.inclination_deg ?? null,
-        eccentricity: ecc ?? null,
-        mean_motion_rev_per_day: mm ?? null,
-        period_min: periodMin,
-        perigee_km: perigeeKm,
-        apogee_km: apogeeKm,
-        bstar: tle?.bstar ?? null,
-      },
-      assumptions: [
-        'SGP4 analytic propagation from public orbital elements (TLE/GP).',
-        'No operational covariance; reliability is a heuristic from element age.',
-        'Perigee/apogee derived from mean motion and eccentricity (two-body).',
-      ],
+      orbit_summary: { inclination_deg: tle?.inclination_deg ?? null, eccentricity: ecc ?? null, mean_motion_rev_per_day: mm ?? null, period_min: periodMin, perigee_km: perigeeKm, apogee_km: apogeeKm, bstar: tle?.bstar ?? null },
+      assumptions: ['SGP4 analytic propagation from public orbital elements (TLE/GP).', 'No operational covariance; reliability is a heuristic from element age.', 'Perigee/apogee derived from mean motion and eccentricity (two-body).'],
     };
     try {
       const blob = new Blob([JSON.stringify(record, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `trsat_research_${activeObject.norad_id}_overview.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const a = document.createElement('a'); a.href = url; a.download = `trsat_research_${activeObject.norad_id}_overview.json`; a.click(); URL.revokeObjectURL(url);
       addLog(`Research Lab: Exported research record for ${activeObject.name}.`);
-    } catch {
-      addLog('Research Lab: Export failed.');
-    }
+    } catch { addLog('Research Lab: Export failed.'); }
   };
 
   const modules: { id: ModuleId; label: string }[] = [
-    { id: 'overview', label: t('research_lab.module_overview') },
-    { id: 'validation', label: t('research_lab.module_validation') },
-    { id: 'evolution', label: t('research_lab.module_evolution') },
-    { id: 'passes', label: t('research_lab.module_passes') },
-    { id: 'relative', label: t('research_lab.module_relative') },
+    { id: 'overview',    label: t('research_lab.module_overview') },
+    { id: 'validation',  label: t('research_lab.module_validation') },
+    { id: 'evolution',   label: t('research_lab.module_evolution') },
+    { id: 'passes',      label: t('research_lab.module_passes') },
+    { id: 'relative',    label: t('research_lab.module_relative') },
     { id: 'conjunction', label: t('research_lab.module_conjunction') },
-    { id: 'numerical', label: t('research_lab.module_numerical') },
-    { id: 'repro', label: t('research_lab.module_repro') },
+    { id: 'numerical',   label: t('research_lab.module_numerical') },
+    { id: 'repro',       label: t('research_lab.module_repro') },
   ];
 
-  const confidenceColor =
-    reliabilityLabel === 'FRESH'
-      ? 'var(--accent-success)'
-      : reliabilityLabel === 'AGING'
-      ? 'var(--accent-warning)'
-      : reliabilityLabel === 'STALE'
-      ? 'var(--accent-danger)'
-      : 'var(--text-muted)';
-
   const renderCanvas = () => {
-    if (!activeObject) {
-      return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.6, maxWidth: '460px', margin: '0 auto' }}>
-          {t('research_lab.no_object')}
-        </div>
-      );
-    }
+    if (!activeObject) return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.6, maxWidth: '460px', margin: '0 auto' }}>
+        {t('research_lab.no_object')}
+      </div>
+    );
 
-    if (moduleId !== 'overview') {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gap: '12px' }}>
-          <FlaskConical size={30} strokeWidth={1.25} color="var(--text-muted)" />
-          <div style={{ fontSize: '13px', lineHeight: 1.6, maxWidth: '420px' }}>{t('research_lab.planned')}</div>
-        </div>
-      );
-    }
+    if (moduleId === 'evolution') return <OrbitEvolutionModule noradId={activeObject.norad_id} objectName={activeObject.name} />;
+    if (moduleId === 'passes')    return <PassAnalysisModule    noradId={activeObject.norad_id} objectName={activeObject.name} />;
+    if (moduleId === 'relative')  return <RelativeMotionModule  primaryId={activeObject.norad_id} primaryName={activeObject.name} />;
+    if (moduleId === 'validation') return <ValidationModule     noradId={activeObject.norad_id} objectName={activeObject.name} />;
+
+    if (moduleId !== 'overview') return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gap: '12px' }}>
+        <FlaskConical size={30} strokeWidth={1.25} color="var(--text-muted)" />
+        <div style={{ fontSize: '13px', lineHeight: 1.6, maxWidth: '420px' }}>{t('research_lab.planned')}</div>
+      </div>
+    );
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '18px', overflowY: 'auto', height: '100%' }}>
@@ -200,7 +515,6 @@ export const ResearchLabWorkspace: React.FC = () => {
             <Field label="Classification" value="Catalog Object" />
           </div>
         </Card>
-
         <Card title={t('research_lab.data_provenance')}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
             <Field label="Source" value={activeObject.source} />
@@ -208,13 +522,9 @@ export const ResearchLabWorkspace: React.FC = () => {
             <Field label="Propagation Model" value="SGP4" />
             <Field label="Element Epoch" value={fmtEpoch(epoch)} mono />
             <Field label="Element Age" value={ageDays != null ? `${ageDays.toFixed(2)} days` : '—'} mono />
-            <Field
-              label="Reliability"
-              value={<span style={{ color: confidenceColor }}>{reliabilityLabel}</span>}
-            />
+            <Field label="Reliability" value={<span style={{ color: confidenceColor }}>{reliabilityLabel}</span>} />
           </div>
         </Card>
-
         <Card title={t('research_lab.orbit_summary')}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
             <Field label="Inclination" value={fmt(tle?.inclination_deg, 2, '°')} mono />
@@ -226,21 +536,15 @@ export const ResearchLabWorkspace: React.FC = () => {
             <Field label="BSTAR (drag)" value={tle?.bstar != null ? tle.bstar.toExponential(3) : '—'} mono />
           </div>
         </Card>
-
         <Card title={t('research_lab.actions')}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            <button onClick={exportRecord} style={primaryActionBtn}>
+            <button onClick={exportRecord} style={{ ...primaryBtn }}>
               {t('research_lab.export_record')}
             </button>
-            <button onClick={() => setModuleId('evolution')} style={ghostActionBtn}>
-              {t('research_lab.module_evolution')}
-            </button>
-            <button onClick={() => setModuleId('passes')} style={ghostActionBtn}>
-              {t('research_lab.module_passes')}
-            </button>
-            <button onClick={() => setModuleId('conjunction')} style={ghostActionBtn}>
-              {t('research_lab.module_conjunction')}
-            </button>
+            <button onClick={() => setModuleId('validation')} style={ghostBtn}>{t('research_lab.module_validation')}</button>
+            <button onClick={() => setModuleId('evolution')} style={ghostBtn}>{t('research_lab.module_evolution')}</button>
+            <button onClick={() => setModuleId('passes')} style={ghostBtn}>{t('research_lab.module_passes')}</button>
+            <button onClick={() => setModuleId('relative')} style={ghostBtn}>{t('research_lab.module_relative')}</button>
           </div>
         </Card>
       </div>
@@ -248,120 +552,39 @@ export const ResearchLabWorkspace: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 60,
-        background: 'var(--bg-primary)',
-        display: 'flex',
-        flexDirection: 'column',
-        fontFamily: 'var(--font-ui)',
-        color: 'var(--text-primary)',
-      }}
-    >
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-ui)', color: 'var(--text-primary)' }}>
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 18px',
-          height: '56px',
-          borderBottom: '1px solid var(--border-subtle)',
-          background: 'rgba(8, 18, 32, 0.6)',
-          backdropFilter: 'blur(20px)',
-          flexShrink: 0,
-        }}
-      >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', height: '56px', borderBottom: '1px solid var(--border-subtle)', background: 'rgba(8,18,32,0.6)', backdropFilter: 'blur(20px)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <FlaskConical size={16} color="var(--accent-blue)" />
-          <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            {t('research_lab.title')}
-          </span>
+          <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{t('research_lab.title')}</span>
           {activeObject && (
             <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              · {activeObject.name} · SGP4 ·{' '}
-              <span style={{ color: confidenceColor, fontWeight: 600 }}>{reliabilityLabel}</span>
+              · {activeObject.name} · SGP4 · <span style={{ color: confidenceColor, fontWeight: 600 }}>{reliabilityLabel}</span>
             </span>
           )}
         </div>
-        <button
-          onClick={() => setOpen(false)}
-          title="Close (Esc)"
-          style={{
-            background: 'none',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-sm)',
-            color: 'var(--text-muted)',
-            fontSize: '18px',
-            lineHeight: 1,
-            cursor: 'pointer',
-            padding: '4px 10px',
-          }}
-        >
-          &times;
-        </button>
+        <button onClick={() => setOpen(false)} title="Close (Esc)" style={{ background: 'none', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)', fontSize: '18px', lineHeight: 1, cursor: 'pointer', padding: '4px 10px' }}>&times;</button>
       </div>
 
-      {/* Body: module nav + canvas */}
+      {/* Body */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        <div
-          style={{
-            width: '220px',
-            flexShrink: 0,
-            borderRight: '1px solid var(--border-subtle)',
-            padding: '12px 8px',
-            overflowY: 'auto',
-            background: 'rgba(8, 18, 32, 0.4)',
-          }}
-        >
-          {modules.map((m) => {
+        {/* Module nav */}
+        <div style={{ width: '220px', flexShrink: 0, borderRight: '1px solid var(--border-subtle)', padding: '12px 8px', overflowY: 'auto', background: 'rgba(8,18,32,0.4)' }}>
+          {modules.map(m => {
             const active = m.id === moduleId;
             return (
-              <button
-                key={m.id}
-                onClick={() => setModuleId(m.id)}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '9px 12px',
-                  marginBottom: '2px',
-                  borderRadius: 'var(--radius-sm)',
-                  border: 'none',
-                  borderLeft: active ? '2px solid var(--accent-blue)' : '2px solid transparent',
-                  background: active ? 'rgba(37, 183, 255, 0.08)' : 'transparent',
-                  color: active ? 'var(--accent-blue)' : 'var(--text-muted)',
-                  fontSize: '12px',
-                  fontWeight: active ? 600 : 500,
-                  cursor: 'pointer',
-                }}
-              >
+              <button key={m.id} onClick={() => setModuleId(m.id)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 12px', marginBottom: '2px', borderRadius: 'var(--radius-sm)', border: 'none', borderLeft: active ? '2px solid var(--accent-blue)' : '2px solid transparent', background: active ? 'rgba(37,183,255,0.08)' : 'transparent', color: active ? 'var(--accent-blue)' : 'var(--text-muted)', fontSize: '12px', fontWeight: active ? 600 : 500, cursor: 'pointer' }}>
                 {m.label}
               </button>
             );
           })}
         </div>
-
         <div style={{ flex: 1, minWidth: 0 }}>{renderCanvas()}</div>
       </div>
 
       {/* Provenance footer */}
-      <div
-        style={{
-          flexShrink: 0,
-          borderTop: '1px solid var(--border-subtle)',
-          padding: '8px 18px',
-          fontSize: '10px',
-          color: 'var(--text-muted)',
-          background: 'rgba(8, 18, 32, 0.6)',
-          display: 'flex',
-          gap: '16px',
-          flexWrap: 'wrap',
-        }}
-        className="mono-text"
-      >
+      <div style={{ flexShrink: 0, borderTop: '1px solid var(--border-subtle)', padding: '8px 18px', fontSize: '10px', color: 'var(--text-muted)', background: 'rgba(8,18,32,0.6)', display: 'flex', gap: '16px', flexWrap: 'wrap' }} className="mono-text">
         <span>Source: {activeObject ? activeObject.source : '—'}</span>
         <span>Format: {sourceFormat}</span>
         <span>Epoch: {fmtEpoch(epoch)}</span>
@@ -371,28 +594,6 @@ export const ResearchLabWorkspace: React.FC = () => {
       </div>
     </div>
   );
-};
-
-const primaryActionBtn: React.CSSProperties = {
-  padding: '8px 16px',
-  borderRadius: 'var(--radius-sm)',
-  border: 'none',
-  background: 'var(--accent-blue)',
-  color: '#050B14',
-  fontSize: '12px',
-  fontWeight: 700,
-  cursor: 'pointer',
-};
-
-const ghostActionBtn: React.CSSProperties = {
-  padding: '8px 16px',
-  borderRadius: 'var(--radius-sm)',
-  border: '1px solid var(--border-subtle)',
-  background: 'transparent',
-  color: 'var(--text-muted)',
-  fontSize: '12px',
-  fontWeight: 500,
-  cursor: 'pointer',
 };
 
 export default ResearchLabWorkspace;
