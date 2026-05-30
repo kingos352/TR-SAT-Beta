@@ -411,6 +411,85 @@ const ValidationModule: React.FC<{ noradId: number; objectName: string }> = ({ n
   );
 };
 
+// ─── Reproducibility module ──────────────────────────────────────────────────
+
+const SCHEMAS = [
+  {
+    id: 'trsat.research_record',
+    version: 'v1',
+    desc: 'Overview analysis record — object summary, data provenance, derived orbit parameters, SGP4 propagation model declaration.',
+    module: 'Research Lab → Overview → Export Research Record',
+  },
+  {
+    id: 'trsat.validation_comparison',
+    version: 'v1',
+    desc: 'External reference comparison — TR-SAT SGP4 predicted state vs manually entered reference position. Absolute lat/lon/alt differences.',
+    module: 'Research Lab → Validation Center',
+  },
+  {
+    id: 'trsat.conjunction_provenance',
+    version: 'v1',
+    desc: 'Per-result conjunction screening record — TCA, miss distance, TLE ages, covariance source, Pc heuristic. One file per conjunction pair.',
+    module: 'Conjunction Analysis → per-card Export JSON',
+  },
+  {
+    id: 'trsat.conjunction_study',
+    version: 'v1',
+    desc: 'Batch conjunction study export — all screening results with provenance, model declaration, and batch disclaimer.',
+    module: 'Research Lab → Conjunction Study → Export All Results',
+  },
+];
+
+const REPRO_STEPS = [
+  'Record the NORAD Catalog ID of the object of interest.',
+  'Note the TLE epoch (visible in Research Lab → Overview → Data Provenance).',
+  'Record the propagation timestamp (UTC) used — the same epoch + propagation time must be used to reproduce any state vector.',
+  'Export the Research Record JSON (trsat.research_record v1) for this object and timestamp.',
+  'Re-ingest the same TLE (or OMM JSON) from CelesTrak/Space-Track for the same epoch.',
+  'Run SGP4 with the same TLE elements and timestamp using any conformant SGP4 implementation (python-sgp4, Orekit, GMAT).',
+  'Compare output — position differences should be sub-metre for identical inputs.',
+];
+
+const ReproducibilityModule: React.FC = () => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '18px', overflowY: 'auto', height: '100%' }}>
+    <Disclaimer text="Reproducibility in TR-SAT is defined as: given the same TLE/OMM elements and propagation timestamp, any conformant SGP4 implementation will produce the same result. Absolute accuracy relative to the physical object's true position depends on TLE quality and age — that is external to TR-SAT." />
+
+    <Card title="How to Reproduce a TR-SAT Analysis">
+      <ol style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
+        {REPRO_STEPS.map((step, i) => (
+          <li key={i} style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.55 }}>{step}</li>
+        ))}
+      </ol>
+    </Card>
+
+    <Card title="Record Schemas">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {SCHEMAS.map(s => (
+          <div key={s.id} style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '4px' }}>
+              <span className="mono-text" style={{ fontSize: '11px', color: 'var(--accent-blue)', fontWeight: 700 }}>{s.id}</span>
+              <span className="mono-text" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{s.version}</span>
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '4px' }}>{s.desc}</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-muted)', opacity: 0.7 }}>From: {s.module}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+
+    <Card title="External Verification Tools">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.55 }}>
+        <div><strong style={{ color: 'var(--text-primary)' }}>python-sgp4</strong> (brandon-rhodes/python-sgp4) — The same library TR-SAT uses internally. Feed the same TLE line1/line2 and epoch.</div>
+        <div><strong style={{ color: 'var(--text-primary)' }}>Orekit / GMAT</strong> — For higher-fidelity numerical verification against SGP4 baselines.</div>
+        <div><strong style={{ color: 'var(--text-primary)' }}>AGI STK / Celestia</strong> — For independent orbit visualisation and pass prediction comparison.</div>
+        <div style={{ marginTop: '4px', fontSize: '10px', opacity: 0.7 }}>
+          ⓘ SGP4 is deterministic for identical inputs — any deviation between tools indicates a different TLE, epoch, or implementation variant (SGP4 vs SGP8 vs SDP4/SDP8).
+        </div>
+      </div>
+    </Card>
+  </div>
+);
+
 // ─── Conjunction Study module ────────────────────────────────────────────────
 
 const ConjunctionStudyModule: React.FC = () => {
@@ -654,7 +733,8 @@ export const ResearchLabWorkspace: React.FC = () => {
     if (moduleId === 'passes')      return <PassAnalysisModule    noradId={activeObject.norad_id} objectName={activeObject.name} />;
     if (moduleId === 'relative')    return <RelativeMotionModule  primaryId={activeObject.norad_id} primaryName={activeObject.name} />;
     if (moduleId === 'validation')  return <ValidationModule      noradId={activeObject.norad_id} objectName={activeObject.name} />;
-    if (moduleId === 'conjunction') return <ConjunctionStudyModule />;
+    if (moduleId === 'conjunction')  return <ConjunctionStudyModule />;
+    if (moduleId === 'repro')        return <ReproducibilityModule />;
 
     if (moduleId !== 'overview') return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '40px', textAlign: 'center', color: 'var(--text-muted)', gap: '12px' }}>
@@ -706,6 +786,7 @@ export const ResearchLabWorkspace: React.FC = () => {
             <button onClick={() => setModuleId('passes')} style={ghostBtn}>{t('research_lab.module_passes')}</button>
             <button onClick={() => setModuleId('relative')} style={ghostBtn}>{t('research_lab.module_relative')}</button>
             <button onClick={() => setModuleId('conjunction')} style={ghostBtn}>{t('research_lab.module_conjunction')}</button>
+            <button onClick={() => setModuleId('repro')} style={ghostBtn}>{t('research_lab.module_repro')}</button>
           </div>
         </Card>
       </div>

@@ -3,7 +3,8 @@ import ReactDOM from 'react-dom';
 import { useConsoleStore } from '../../store/useConsoleStore';
 import { getHealth, API_BASE_URL } from '../../api/client';
 import { useTranslation } from '../../i18n/useTranslation';
-import { Settings, Globe, MapPin, Satellite, Radio } from 'lucide-react';
+import { Settings, Globe, MapPin, Satellite, Radio, Info } from 'lucide-react';
+import { AboutPanel } from '../About/AboutPanel';
 
 const StatusBarInner: React.FC = () => {
   const [utcTime, setUtcTime] = useState<string>('');
@@ -25,6 +26,7 @@ const StatusBarInner: React.FC = () => {
   const isTr = language === 'tr';
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [settingsData, setSettingsData] = useState({
     cesium_token: '',
     spacetrack_user: '',
@@ -267,6 +269,15 @@ const StatusBarInner: React.FC = () => {
           {language.toUpperCase()}
         </button>
 
+        {/* About */}
+        <button
+          className="icon-btn"
+          onClick={() => setShowAbout(true)}
+          title={isTr ? 'Hakkında & Sorumluluk Reddi' : 'About & Disclaimers'}
+        >
+          <Info size={14} strokeWidth={1.75} />
+        </button>
+
         {/* Settings */}
         <button
           className="icon-btn"
@@ -277,8 +288,9 @@ const StatusBarInner: React.FC = () => {
         </button>
       </div>
 
-      {/* Settings Modal */}
+      {/* About modal */}
     </header>
+      {showAbout && <AboutPanel onClose={() => setShowAbout(false)} isTr={isTr} />}
 
       {/* Portal: render outside <header> so backdrop-filter doesn't trap position:fixed */}
       {showSettingsModal && ReactDOM.createPortal(
