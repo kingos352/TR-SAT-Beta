@@ -1,0 +1,322 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+  color: #EAF2FF;
+  background-color: #050B14;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* ── New Design Tokens ─────────────────────────────────────── */
+  --bg-primary:       #050B14;
+  --bg-panel:         rgba(8, 18, 32, 0.86);
+  --bg-panel-soft:    rgba(13, 28, 48, 0.72);
+  --border-subtle:    rgba(255, 255, 255, 0.08);
+  --border-accent:    rgba(37, 183, 255, 0.3);
+  --text-primary:     #EAF2FF;
+  --text-muted:       #8FA6C1;
+  --accent-blue:      #25B7FF;
+  --accent-cyan:      #3ED1B2;
+  --accent-success:   #2EE59D;
+  --accent-danger:    #FF4D6D;
+  --accent-warning:   #F59E0B;
+  --font-ui:          'Inter', -apple-system, sans-serif;
+  --font-mono:        'JetBrains Mono', 'Courier New', monospace;
+  --radius-sm:        8px;
+  --radius-md:        12px;
+  --radius-lg:        16px;
+  --radius-xl:        18px;
+
+  /* ── Legacy Aliases (backward compat — do not remove) ─────── */
+  --bg-space-dark:      var(--bg-primary);
+  --bg-console-panel:   var(--bg-panel);
+  --border-color:       var(--border-subtle);
+  --text-bright:        var(--text-primary);
+  --accent-primary:     var(--accent-blue);
+  --accent-green:       var(--accent-success);
+  --accent-red:         var(--accent-danger);
+  --accent-orange:      var(--accent-warning);
+  /* --accent-cyan kept but value updated above */
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html, #root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  font-family: var(--font-ui);
+  color: var(--text-primary);
+}
+
+/* ── Glass Panel ──────────────────────────────────────────────── */
+.glass-panel {
+  background: var(--bg-panel);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+}
+
+/* ── Panel Title ──────────────────────────────────────────────── */
+.panel-title {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ── Typography helpers ───────────────────────────────────────── */
+.mono-text {
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.value-mono {
+  font-family: var(--font-mono);
+  color: var(--accent-blue);
+  letter-spacing: 0.04em;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+
+/* ── Status Indicators ────────────────────────────────────────── */
+.status-indicator {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-ok {
+  background-color: var(--accent-success);
+  box-shadow: 0 0 6px rgba(46, 229, 157, 0.6);
+}
+
+.status-warning {
+  background-color: var(--accent-warning);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+}
+
+.status-error {
+  background-color: var(--accent-danger);
+  box-shadow: 0 0 6px rgba(255, 77, 109, 0.5);
+}
+
+/* ── Compact Badges ───────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-panel-soft);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.badge--active {
+  background: rgba(37, 183, 255, 0.12);
+  border-color: rgba(37, 183, 255, 0.3);
+  color: var(--accent-blue);
+}
+
+.badge--live {
+  background: rgba(46, 229, 157, 0.1);
+  border-color: rgba(46, 229, 157, 0.3);
+  color: var(--accent-success);
+}
+
+.badge--offline {
+  background: rgba(255, 77, 109, 0.1);
+  border-color: rgba(255, 77, 109, 0.3);
+  color: var(--accent-danger);
+}
+
+.badge--warn {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--accent-warning);
+}
+
+/* ── Card ─────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-panel-soft);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(37, 183, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 183, 255, 0.4);
+}
+
+/* ── Cesium overrides ─────────────────────────────────────────── */
+.cesium-viewer {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Shift Cesium's built-in toolbar (home + 2D/3D picker) away from the
+   right overlay panel so the buttons remain accessible. */
+.cesium-viewer-toolbar {
+  right: 372px !important;
+  top: 64px !important;
+}
+
+/* ── PERFORMANCE: Rendering isolation ────────────────────────── */
+.sidebar-dock {
+  contain: layout style;   /* paint removed — backdrop-filter needs compositor access */
+  overflow-anchor: none;
+}
+
+/* Overlay variant: glassmorphism panel floating above the globe */
+.sidebar-dock--overlay {
+  background: rgba(5, 11, 20, 0.55);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Right overlay gets a left border instead */
+.sidebar-dock--overlay:last-of-type {
+  border-right: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ── Collapsible nav-item style ───────────────────────────────── */
+.collapsible-header {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  margin: 1px 6px;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  user-select: none;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  border-left: 2px solid transparent;
+}
+
+.collapsible-header:hover {
+  background: rgba(37, 183, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.collapsible-header--open {
+  color: var(--accent-blue);
+  background: rgba(37, 183, 255, 0.08);
+  border-left-color: var(--accent-blue);
+}
+
+.collapsible-header--open:hover {
+  background: rgba(37, 183, 255, 0.1);
+}
+
+.collapsible-header--pending {
+  opacity: 0.6;
+}
+
+/* ── Collapsible arrow ────────────────────────────────────────── */
+.collapsible-arrow {
+  will-change: transform;
+  color: var(--text-muted);
+  transition: transform 0.2s ease, color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.collapsible-header--open .collapsible-arrow {
+  color: var(--accent-blue);
+}
+
+/* ── Accordion content animation ─────────────────────────────── */
+@keyframes accordion-open {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Icon button ──────────────────────────────────────────────── */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: rgba(37, 183, 255, 0.08);
+  color: var(--text-primary);
+  border-color: var(--border-accent);
+}
+
+/* ── Animations ───────────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}

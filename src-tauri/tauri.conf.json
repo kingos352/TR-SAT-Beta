@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "TR-SAT Mission Control V3",
+  "version": "3.0.0",
+  "identifier": "com.trsat.mission-control",
+  "build": {
+    "beforeDevCommand": "npm run dev --prefix ../frontend",
+    "devUrl": "http://127.0.0.1:5173",
+    "beforeBuildCommand": "npm run build --prefix ../frontend",
+    "frontendDist": "../frontend/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "TR-SAT Mission Control V3",
+        "width": 1600,
+        "height": 1000,
+        "minWidth": 1280,
+        "minHeight": 800,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "center": true,
+        "url": "index.html",
+        "additionalBrowserArgs": "--disable-features=msSmartScreenProtection --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --use-gl=angle --enable-features=VaapiVideoDecoder"
+      }
+    ],
+    "security": {
+      "csp": null,
+      "capabilities": ["default"]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "copyright": "TR-SAT 2026",
+    "category": "Education",
+    "shortDescription": "Local-first orbital intelligence and RSO tracking platform",
+    "longDescription": "SGP4-based satellite tracking with conjunction analysis, pass prediction and real-time 3D visualization."
+  }
+}

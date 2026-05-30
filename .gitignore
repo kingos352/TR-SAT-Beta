@@ -1,0 +1,38 @@
+# ── Dependencies ───────────────────────────────────────────────
+node_modules/
+**/node_modules/
+.venv/
+**/.venv/
+
+# ── Python ─────────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+**/.pytest_cache/
+
+# ── Build outputs ──────────────────────────────────────────────
+dist/
+**/dist/
+build/
+**/build/
+src-tauri/target/
+
+# ── Databases & runtime data ───────────────────────────────────
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# ── Secrets & local env (DO NOT COMMIT) ────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Editor / OS ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/
