@@ -31,6 +31,7 @@ import { WeatherPanel } from './components/Console/WeatherPanel';
 import { CollapsibleWrapper } from './components/Console/CollapsibleWrapper';
 import { FirstBootSetup } from './components/Console/FirstBootSetup';
 import { GuidedTour } from './components/Console/GuidedTour';
+import { ResearchLabWorkspace } from './components/ResearchLab/ResearchLabWorkspace';
 import { useConsoleStore } from './store/useConsoleStore';
 
 // Fetches observation quality score independently of the WeatherPanel being open.
@@ -73,6 +74,7 @@ function useWeatherScoreBackground() {
 
 const LeftSidebar: React.FC = () => {
   const { t } = useTranslation();
+  const setResearchLabOpen = useConsoleStore(s => s.setResearchLabOpen);
   // Restore the last-opened workspace panel across sessions.
   const [activePanelId, setActivePanelId] = useState<string | null>(() => {
     try { return localStorage.getItem('trsat_last_panel'); } catch { return null; }
@@ -149,6 +151,12 @@ const LeftSidebar: React.FC = () => {
         {panel('environment', t('menus.space_environment_dashboard'), Activity, <SpaceEnvironmentDashboard />)}
 
         <div style={sectionLabelStyle}>{t('nav.research')}</div>
+        <button
+          onClick={() => setResearchLabOpen(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: 9, width: 'calc(100% - 12px)', margin: '1px 6px 5px', padding: '10px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-accent)', background: 'rgba(37,183,255,0.08)', color: 'var(--accent-blue)', fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+        >
+          <FlaskConical size={14} strokeWidth={2} /> {t('research_lab.open')}
+        </button>
         {panel('reliability', t('menus.tle_reliability_dashboard'), ShieldCheck, <ResearchReliabilityDashboard />)}
         {panel('research', t('menus.research_mode'), FlaskConical, <ResearchModePanel />)}
 
@@ -412,6 +420,7 @@ const App: React.FC = () => {
       </main>
 
       <GuidedTour />
+      <ResearchLabWorkspace />
     </div>
   );
 };

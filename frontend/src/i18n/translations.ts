@@ -409,6 +409,25 @@ export const translations: Record<string, any> = {
       science_title: 'Understanding the Displayed Data',
       science_body: 'Displayed positions are propagated estimates from orbital element data — not direct spacecraft telemetry. Research workflows record source, epoch, model and confidence so analysis stays transparent.',
       science_finish: 'Open Mission Workspace'
+    },
+    research_lab: {
+      title: 'Research Lab',
+      open: 'Open Research Lab',
+      no_object: 'No object selected. Choose one from Track Satellites → Object Search, or run the guided ISS scenario, then reopen Research Lab.',
+      module_overview: 'Overview',
+      module_validation: 'Validation Center',
+      module_evolution: 'Orbit Evolution',
+      module_passes: 'Pass Analysis',
+      module_relative: 'Relative Motion',
+      module_conjunction: 'Conjunction Study',
+      module_numerical: 'Numerical Experiment',
+      module_repro: 'Reproducibility',
+      planned: 'This module is planned for an upcoming release. Phase 3 V1 ships the Research Overview and reproducible record export.',
+      object_summary: 'Object Summary',
+      data_provenance: 'Data Provenance',
+      orbit_summary: 'Orbit Summary',
+      actions: 'Research Actions',
+      export_record: 'Export Research Record'
     }
   },
   tr: {
@@ -821,6 +840,25 @@ export const translations: Record<string, any> = {
       science_title: 'Gösterilen Veriyi Anlamak',
       science_body: 'Gösterilen konumlar, yörünge elemanı verisinden türetilen tahminlerdir — doğrudan uzay aracı telemetrisi değildir. Araştırma akışları; kaynak, epoch, model ve güveni kaydederek analizi şeffaf tutar.',
       science_finish: 'Görev Çalışma Alanını Aç'
+    },
+    research_lab: {
+      title: 'Araştırma Laboratuvarı',
+      open: 'Araştırma Laboratuvarını Aç',
+      no_object: 'Nesne seçili değil. Uydu Takibi → Nesne Arama\'dan seçin ya da rehberli ISS senaryosunu çalıştırın, sonra Araştırma Laboratuvarını yeniden açın.',
+      module_overview: 'Genel Bakış',
+      module_validation: 'Doğrulama Merkezi',
+      module_evolution: 'Yörünge Evrimi',
+      module_passes: 'Geçiş Analizi',
+      module_relative: 'Göreli Hareket',
+      module_conjunction: 'Yakın Geçiş Çalışması',
+      module_numerical: 'Numerik Deney',
+      module_repro: 'Tekrarlanabilirlik',
+      planned: 'Bu modül yaklaşan bir sürümde gelecek. Faz 3 V1; Araştırma Genel Bakışı ve tekrarlanabilir kayıt dışa aktarımını içerir.',
+      object_summary: 'Nesne Özeti',
+      data_provenance: 'Veri Kökeni',
+      orbit_summary: 'Yörünge Özeti',
+      actions: 'Araştırma Eylemleri',
+      export_record: 'Araştırma Kaydını Dışa Aktar'
     }
   }
 };
