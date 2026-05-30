@@ -18,6 +18,7 @@ class TLERead(BaseModel):
     bstar: Optional[float] = None
     source: str
     source_group: str
+    source_format: str = "TLE"
     ingested_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -37,6 +38,7 @@ class RSORead(BaseModel):
 
 class CatalogSyncRequest(BaseModel):
     group: str
+    data_format: Optional[str] = "tle"  # "tle" (default) or "omm"
 
 class CatalogSyncResponse(BaseModel):
     group: str

@@ -38,6 +38,8 @@ export const createSystemSlice: StateCreator<
     | 'fetchCatalogAnalytics'
     | 'observationScore'
     | 'setObservationScore'
+    | 'researchLabOpen'
+    | 'setResearchLabOpen'
   >
 > = (set, get) => ({
   // Initial state
@@ -52,6 +54,8 @@ export const createSystemSlice: StateCreator<
   },
   observationScore: null,
   setObservationScore: (score) => set({ observationScore: score }),
+  researchLabOpen: false,
+  setResearchLabOpen: (open) => set({ researchLabOpen: open }),
   logs: ['Console Initialized. System standby.'],
   activePanel: 'mission_control',
   liveTrackingEnabled: false,

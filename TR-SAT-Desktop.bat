@@ -1,13 +1,13 @@
 @echo off
 REM ---------------------------------------------------------------
-REM  TR-SAT Mission Control V3 — Tauri Native Desktop
+REM  TR-SAT Mission Control V4 — Tauri Native Desktop
 REM ---------------------------------------------------------------
 setlocal
 cd /d "%~dp0"
 
 echo.
 echo ============================================================
-echo   TR-SAT Mission Control V3 - Desktop Modu
+echo   TR-SAT Mission Control V4 - Desktop Modu
 echo ============================================================
 echo.
 

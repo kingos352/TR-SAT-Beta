@@ -3693,7 +3693,7 @@ checksum = "8df9b6e13f2d32c91b9bd719c00d1958837bc7dec474d94952798cc8e69eeec3"
 
 [[package]]
 name = "tr-sat-mission-control"
-version = "3.0.0"
+version = "4.0.0"
 dependencies = [
  "serde",
  "serde_json",

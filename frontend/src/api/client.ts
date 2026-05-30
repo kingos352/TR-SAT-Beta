@@ -38,6 +38,7 @@ export interface TLERead {
   bstar?: number;
   source: string;
   source_group: string;
+  source_format?: string; // TLE, OMM_JSON, OMM_CSV, OEM, CDM
   ingested_at: string;
 }
 
@@ -330,11 +331,14 @@ export async function getHealth(): Promise<HealthResponse> {
   return apiRequest<HealthResponse>(`${API_BASE_URL}/api/v1/health`);
 }
 
-export async function syncCatalogGroup(group: string): Promise<CatalogSyncResponse> {
+export async function syncCatalogGroup(
+  group: string,
+  dataFormat: 'tle' | 'omm' = 'tle'
+): Promise<CatalogSyncResponse> {
   return apiRequest<CatalogSyncResponse>(`${API_BASE_URL}/api/v1/catalog/sync`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ group }),
+    body: JSON.stringify({ group, data_format: dataFormat }),
   });
 }
 

@@ -49,6 +49,25 @@ SessionLocal = sessionmaker(
 
 Base = declarative_base()
 
+
+def run_migrations() -> None:
+    """Idempotent lightweight migrations for the local SQLite DB.
+
+    SQLAlchemy's create_all() creates missing tables but never alters existing
+    ones, so additive columns are applied here. Safe to run on every startup.
+    """
+    from sqlalchemy import inspect
+    insp = inspect(engine)
+    if "tle_records" not in insp.get_table_names():
+        return
+    cols = {c["name"] for c in insp.get_columns("tle_records")}
+    if "source_format" not in cols:
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                "ALTER TABLE tle_records ADD COLUMN source_format VARCHAR NOT NULL DEFAULT 'TLE'"
+            )
+
+
 def get_db():
     """
     Database session dependency generator.

@@ -81,7 +81,7 @@ def _empty_counts() -> Dict[str, int]:
     }
 
 
-def _ingest_parsed_entries(db: Session, group: str, parsed_entries: List[dict], acc: Dict[str, int], warnings: List[str] = None) -> None:
+def _ingest_parsed_entries(db: Session, group: str, parsed_entries: List[dict], acc: Dict[str, int], warnings: List[str] = None, source_format: str = "TLE") -> None:
     """Parse, classify and persist one group's entries, accumulating counts into acc."""
     for entry in parsed_entries:
         try:
@@ -137,6 +137,7 @@ def _ingest_parsed_entries(db: Session, group: str, parsed_entries: List[dict], 
                     epoch=epoch,
                     source="CelesTrak",
                     source_group=group,
+                    source_format=source_format,
                     ingested_at=datetime.now(timezone.utc).replace(tzinfo=None),
                     **orbital_fields
                 )
@@ -147,6 +148,7 @@ def _ingest_parsed_entries(db: Session, group: str, parsed_entries: List[dict], 
                 existing_tle.line1 = line1
                 existing_tle.line2 = line2
                 existing_tle.source_group = group
+                existing_tle.source_format = source_format
                 existing_tle.ingested_at = datetime.now(timezone.utc).replace(tzinfo=None)
                 for key, val in orbital_fields.items():
                     setattr(existing_tle, key, val)
@@ -180,6 +182,99 @@ def ingest_celestrak_group(db: Session, group: str) -> CatalogSyncResponse:
         parsed_entries = parse_tle_text(raw_tle_data)
         acc["fetched"] += len(parsed_entries)
         _ingest_parsed_entries(db, g, parsed_entries, acc, warnings)
+
+    db.commit()
+
+    return CatalogSyncResponse(
+        group=group,
+        fetched_count=acc["fetched"],
+        parsed_count=acc["parsed"],
+        inserted_objects=acc["inserted_objects"],
+        inserted_tles=acc["inserted_tles"],
+        updated_objects=acc["updated_objects"],
+        skipped_count=acc["skipped"],
+        warning="; ".join(warnings) if warnings else None,
+    )
+
+
+# ── OMM (Orbit Mean-elements Message) support ──────────────────────────────
+# CelesTrak serves the same GP data as OMM JSON via FORMAT=json. Each OMM record
+# is converted to a classic TLE line1/line2 with python-sgp4 so the rest of the
+# pipeline (storage, SGP4 propagation) is unchanged — only source_format differs.
+
+def build_celestrak_omm_url(group: str) -> str:
+    if group not in SUPPORTED_GROUPS:
+        raise ValueError(f"Group '{group}' is not supported by TR-SAT CelesTrak client.")
+    return f"{CELESTRAK_BASE_URL}?GROUP={group}&FORMAT=json"
+
+
+def fetch_celestrak_omm(group: str, timeout_seconds: int = 60) -> List[dict]:
+    """Fetch OMM JSON records from CelesTrak for a group."""
+    url = build_celestrak_omm_url(group)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    response = httpx.get(url, headers=headers, timeout=timeout_seconds)
+    if response.status_code == 403 and "has not updated" in response.text:
+        raise ValueError(
+            "CelesTrak rate limit: Data has not updated since your last download. "
+            "Please try again later."
+        )
+    if response.status_code != 200:
+        raise RuntimeError(f"CelesTrak request failed with status: {response.status_code}")
+    try:
+        data = response.json()
+    except Exception as exc:
+        raise ValueError(f"CelesTrak returned non-JSON OMM data for group '{group}': {exc}")
+    if not isinstance(data, list) or not data:
+        raise ValueError(f"CelesTrak returned no OMM records for group '{group}'.")
+    return data
+
+
+def omm_record_to_tle(record: dict) -> tuple[str, str]:
+    """Convert a single OMM JSON record to classic TLE line1/line2 via python-sgp4."""
+    from sgp4.api import Satrec
+    from sgp4 import omm
+    from sgp4.exporter import export_tle
+
+    sat = Satrec()
+    omm.initialize(sat, record)
+    line1, line2 = export_tle(sat)
+    return line1, line2
+
+
+def _omm_records_to_entries(records: List[dict], warnings: List[str] = None, acc: Dict[str, int] = None) -> List[dict]:
+    """Convert OMM JSON records into the {name, line1, line2} entry shape."""
+    entries: List[dict] = []
+    for rec in records:
+        try:
+            line1, line2 = omm_record_to_tle(rec)
+            name = rec.get("OBJECT_NAME") or f"OBJECT {rec.get('NORAD_CAT_ID', '?')}"
+            entries.append({"name": name, "line1": line1, "line2": line2})
+        except Exception as exc:
+            if acc is not None:
+                acc["skipped"] += 1
+            if warnings is not None and len(warnings) <= 3:
+                warnings.append(f"OMM convert skip [{rec.get('OBJECT_NAME', '?')}]: {exc}")
+            continue
+    return entries
+
+
+def ingest_celestrak_omm_group(db: Session, group: str) -> CatalogSyncResponse:
+    """Fetch CelesTrak OMM JSON for a group, convert to TLE, classify and persist."""
+    groups = DEBRIS_GROUPS if group == "debris" else [group]
+    acc = _empty_counts()
+    warnings: List[str] = []
+
+    for g in groups:
+        try:
+            records = fetch_celestrak_omm(g)
+        except ValueError as e:
+            warnings.append(str(e))
+            continue
+        entries = _omm_records_to_entries(records, warnings, acc)
+        acc["fetched"] += len(records)
+        _ingest_parsed_entries(db, g, entries, acc, warnings, source_format="OMM_JSON")
 
     db.commit()
 

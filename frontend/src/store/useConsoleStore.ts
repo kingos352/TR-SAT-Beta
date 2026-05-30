@@ -109,6 +109,10 @@ export interface ConsoleState {
   observationScore: number | null;
   setObservationScore: (score: number | null) => void;
 
+  // Research Lab workspace overlay
+  researchLabOpen: boolean;
+  setResearchLabOpen: (open: boolean) => void;
+
   // Cesium Diagnostics
   cesiumDiagnostics: { token: string, terrain: string, imagery: string };
   setCesiumDiagnostics: (diagnostics: { token: string, terrain: string, imagery: string }) => void;

@@ -5,7 +5,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.models.rso import RSOCatalog, TLERecord
 from app.schemas.rso import RSORead, CatalogSyncRequest, CatalogSyncResponse
-from app.services.celestrak import ingest_celestrak_group, SUPPORTED_GROUPS
+from app.services.celestrak import ingest_celestrak_group, ingest_celestrak_omm_group, SUPPORTED_GROUPS
 
 router = APIRouter()
 
@@ -20,7 +20,10 @@ def sync_catalog(req: CatalogSyncRequest, db: Session = Depends(get_db)):
             detail=f"Group '{req.group}' is not supported. Supported: {', '.join(SUPPORTED_GROUPS)}"
         )
     try:
-        response = ingest_celestrak_group(db, req.group)
+        if (req.data_format or "tle").lower() == "omm":
+            response = ingest_celestrak_omm_group(db, req.group)
+        else:
+            response = ingest_celestrak_group(db, req.group)
         return response
     except ValueError as e:
         return CatalogSyncResponse(

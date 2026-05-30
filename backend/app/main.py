@@ -2,16 +2,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api.router import api_router
-from app.database import engine, Base
+from app.database import engine, Base, run_migrations
 import app.models  # Ensure all models are imported so Base.metadata is complete
 
-# Create SQLite database tables if not existing
+# Create SQLite database tables if not existing, then apply additive migrations.
 Base.metadata.create_all(bind=engine)
+run_migrations()
 
 app = FastAPI(
     title=settings.APP_NAME,
     description="Backend services for dynamic orbit propagation, pass prediction, and resident space object tracking.",
-    version="3.0.0"
+    version="4.0.0"
 )
 
 # Backend binds exclusively to 127.0.0.1 so only local callers can reach it.
@@ -45,7 +46,7 @@ async def api_root():
     Service entry point returning simple greetings message.
     """
     return {
-        "message": "TR-SAT Mission Control V3 API"
+        "message": "TR-SAT Mission Control V4 API"
     }
 
 @app.get("/{full_path:path}")

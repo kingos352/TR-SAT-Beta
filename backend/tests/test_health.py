@@ -6,7 +6,7 @@ client = TestClient(app)
 def test_read_root():
     response = client.get("/api")
     assert response.status_code == 200
-    assert response.json() == {"message": "TR-SAT Mission Control V3 API"}
+    assert response.json() == {"message": "TR-SAT Mission Control V4 API"}
 
 def test_check_health():
     response = client.get("/api/v1/health")
