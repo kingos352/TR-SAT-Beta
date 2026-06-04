@@ -62,7 +62,7 @@
     </td>
     <td align="center" width="50%">
       <img src="docs/images/full-catalog.png" alt="Full Catalog Visualization" width="100%" /><br/>
-      <sub><b>🌐 Full Catalog — 41,000+ RSO Snapshot</b><br/>All-catalog progressive rendering with orbital shell visualization</sub>
+      <sub><b>🌐 Full Catalog — 20.000+ RSO Snapshot</b><br/>All-catalog progressive rendering with orbital shell visualization</sub>
     </td>
   </tr>
   <tr>
@@ -98,8 +98,8 @@
 | 🛸 **Orbital Tracking** | 🔭 **Observation** | ⚡ **Analysis** |
 |:---:|:---:|:---:|
 | SGP4/SDP4 propagation via Skyfield | Observer setup (lat / lon / alt) | Conjunction screening & Pc |
-| 41,000+ RSO catalog (CelesTrak & Space-Track) | Pass predictions (AOS / TCA / LOS) | Research Reliability Dashboard |
-| Live WebSocket telemetry (5–60 Hz) | Sky View polar chart | Space Environment (Kp, F10.7) |
+| + RSO catalog (CelesTrak & Space-Track) | Pass predictions (AOS / TCA / LOS) | Research Reliability Dashboard |
+| 20.000+ Live WebSocket telemetry (5–60 Hz) | Sky View polar chart | Space Environment (Kp, F10.7) |
 | 3D CesiumJS globe + orbit path | Ground station visibility | Export (JSON / CSV / TLE) |
 | All-catalog snapshot rendering | Weather & observability score | AI Assistant (Gemini) |
 | Historical TLE archive | Elevation profile chart | Research Lab — 8 modules |
@@ -123,7 +123,7 @@
 ║   i18n  (EN / TR)        ║   Gemini AI integration               ║
 ║   :5173 (dev)            ║   :8000                               ║
 ╠══════════════════════════╩═══════════════════════════════════════╣
-║             SQLite  (WAL mode)  ·  ~20 MB  ·  41,827 TLE records ║
+║             SQLite  (WAL mode)  ·  ~20 MB  · 20.343 TLE records ║
 ║                       data/trsat_v3.sqlite                        ║
 ╚══════════════════════════════════════════════════════════════════╝
 ```
@@ -365,7 +365,7 @@ Test suite covers: TLE parser · SGP4 propagation · catalog API · pass predict
 | Source | Data | Auth |
 |--------|------|------|
 | [CelesTrak](https://celestrak.org) | Active satellites, stations, debris, Starlink, GPS, Galileo, OneWeb | None required |
-| [Space-Track](https://www.space-track.org) | Full GP catalog (41,000+ objects), OMM JSON | Free account |
+| [Space-Track](https://www.space-track.org) | Full GP catalog (20.000+ objects), OMM JSON | Free account |
 | [Open-Meteo](https://open-meteo.com) | Local weather for observability scoring | None required |
 | NOAA Space Weather | Kp index, solar flux (F10.7), geomagnetic data | None required |
 
@@ -397,7 +397,7 @@ TR-SAT-Desktop/
 ├── src-tauri/                    # Tauri v2 Rust configuration
 ├── scripts/windows/              # PowerShell build & start scripts
 └── data/                         # SQLite database (git-ignored)
-    └── trsat_v3.sqlite           # ~20 MB · 41,827 TLE records
+    └── trsat_v3.sqlite           # ~20 MB · 20.343 TLE records
 ```
 
 ---
