@@ -1,0 +1,272 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 380" width="800" height="380">
+<!--
+  Orbit geometry (baked-in, no transform on path):
+    Centre  : (400, 190)
+    rx=168, ry=60, rotation=-22°
+    cos22=0.9272  sin22=0.3746
+
+  Orbit crossing points (t=0 and t=π):
+    Right : x=400+168·0.9272=555.8   y=190-168·0.3746=127.1  → (556, 127)
+    Left  : x=400-168·0.9272=244.2   y=190+168·0.3746=252.9  → (244, 253)
+
+  Dividing line (front/back split):
+    y = 351.6 − 0.4041·x
+    At x=0: y≈352   At x=800: y≈28
+
+  animateMotion path — front arc (sweep=1, CW through bottom) first,
+  then back arc (sweep=0, CCW through top):
+    M 555.8,127.1 A 168,60 -22 0 1 244.2,252.9
+                  A 168,60 -22 0 0 555.8,127.1
+-->
+<defs>
+
+  <!-- ── CLIP PATHS ── -->
+  <!-- Satellite shows here when in FRONT of Earth (below dividing line) -->
+  <clipPath id="cFront">
+    <polygon points="0,352 800,28 800,380 0,380"/>
+  </clipPath>
+  <!-- Satellite shows here when BEHIND Earth (above dividing line) -->
+  <clipPath id="cBack">
+    <polygon points="0,0 800,0 800,28 0,352"/>
+  </clipPath>
+
+  <!-- ── GRADIENTS ── -->
+  <radialGradient id="gBg" cx="50%" cy="50%" r="75%">
+    <stop offset="0%"   stop-color="#0c1832"/>
+    <stop offset="100%" stop-color="#010810"/>
+  </radialGradient>
+
+  <radialGradient id="gEarth" cx="37%" cy="30%" r="68%">
+    <stop offset="0%"   stop-color="#70d0f8"/>
+    <stop offset="22%"  stop-color="#2080cc"/>
+    <stop offset="58%"  stop-color="#0d3e9e"/>
+    <stop offset="100%" stop-color="#05122e"/>
+  </radialGradient>
+
+  <radialGradient id="gAtm" cx="50%" cy="50%" r="50%">
+    <stop offset="79%"  stop-color="rgba(0,0,0,0)"/>
+    <stop offset="90%"  stop-color="#0088cc" stop-opacity="0.18"/>
+    <stop offset="100%" stop-color="#00d4ff"  stop-opacity="0.42"/>
+  </radialGradient>
+
+  <clipPath id="cEarth"><circle cx="400" cy="190" r="73"/></clipPath>
+
+  <!-- ── FILTERS ── -->
+  <filter id="fEarth" x="-45%" y="-45%" width="190%" height="190%">
+    <feGaussianBlur stdDeviation="9"  result="b1"/>
+    <feGaussianBlur stdDeviation="3"  in="SourceGraphic" result="b2"/>
+    <feMerge><feMergeNode in="b1"/><feMergeNode in="b2"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="fOrbit" x="-30%" y="-250%" width="160%" height="600%">
+    <feGaussianBlur stdDeviation="3"/>
+  </filter>
+  <filter id="fSat" x="-300%" y="-300%" width="700%" height="700%">
+    <feGaussianBlur stdDeviation="5" result="b"/>
+    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+
+<!-- ══ BACKGROUND ══ -->
+<rect width="800" height="380" fill="url(#gBg)"/>
+<ellipse cx="160" cy="80"  rx="220" ry="52" fill="#1a2850" opacity="0.22" transform="rotate(-18,160,80)"/>
+<ellipse cx="650" cy="300" rx="190" ry="46" fill="#1a2045" opacity="0.20" transform="rotate(-12,650,300)"/>
+
+<!-- ══ STATIC STARS ══ -->
+<g fill="white">
+  <circle cx="28"  cy="15"  r="0.9" opacity="0.65"/><circle cx="75"  cy="42"  r="1.0" opacity="0.55"/>
+  <circle cx="148" cy="10"  r="0.8" opacity="0.75"/><circle cx="205" cy="52"  r="1.1" opacity="0.50"/>
+  <circle cx="288" cy="20"  r="0.9" opacity="0.70"/><circle cx="338" cy="45"  r="0.8" opacity="0.60"/>
+  <circle cx="475" cy="13"  r="1.0" opacity="0.80"/><circle cx="528" cy="40"  r="0.9" opacity="0.55"/>
+  <circle cx="608" cy="18"  r="1.1" opacity="0.68"/><circle cx="678" cy="52"  r="0.8" opacity="0.50"/>
+  <circle cx="742" cy="26"  r="1.0" opacity="0.70"/><circle cx="768" cy="78"  r="0.9" opacity="0.58"/>
+  <circle cx="52"  cy="102" r="1.1" opacity="0.65"/><circle cx="128" cy="86"  r="0.8" opacity="0.50"/>
+  <circle cx="20"  cy="158" r="1.0" opacity="0.60"/><circle cx="88"  cy="198" r="0.9" opacity="0.68"/>
+  <circle cx="48"  cy="248" r="1.1" opacity="0.52"/><circle cx="112" cy="292" r="0.8" opacity="0.70"/>
+  <circle cx="38"  cy="338" r="1.0" opacity="0.58"/><circle cx="168" cy="358" r="0.9" opacity="0.65"/>
+  <circle cx="228" cy="328" r="1.1" opacity="0.50"/><circle cx="278" cy="352" r="0.8" opacity="0.62"/>
+  <circle cx="352" cy="318" r="1.0" opacity="0.70"/><circle cx="438" cy="348" r="0.9" opacity="0.52"/>
+  <circle cx="508" cy="338" r="1.1" opacity="0.68"/><circle cx="572" cy="358" r="0.8" opacity="0.60"/>
+  <circle cx="638" cy="332" r="1.0" opacity="0.70"/><circle cx="708" cy="352" r="0.9" opacity="0.52"/>
+  <circle cx="768" cy="318" r="1.1" opacity="0.68"/><circle cx="756" cy="142" r="0.8" opacity="0.58"/>
+  <circle cx="782" cy="198" r="1.0" opacity="0.70"/><circle cx="758" cy="258" r="0.9" opacity="0.52"/>
+  <circle cx="728" cy="158" r="1.1" opacity="0.68"/><circle cx="708" cy="108" r="0.8" opacity="0.58"/>
+  <circle cx="658" cy="88"  r="1.0" opacity="0.70"/><circle cx="618" cy="148" r="0.9" opacity="0.50"/>
+  <circle cx="578" cy="98"  r="1.1" opacity="0.62"/><circle cx="548" cy="278" r="0.8" opacity="0.68"/>
+  <circle cx="598" cy="288" r="1.0" opacity="0.52"/><circle cx="658" cy="272" r="0.9" opacity="0.62"/>
+  <circle cx="718" cy="288" r="1.1" opacity="0.70"/><circle cx="172" cy="145" r="0.8" opacity="0.52"/>
+  <circle cx="142" cy="190" r="1.0" opacity="0.58"/><circle cx="188" cy="232" r="0.9" opacity="0.70"/>
+  <circle cx="152" cy="272" r="1.1" opacity="0.52"/><circle cx="248" cy="112" r="0.8" opacity="0.62"/>
+  <circle cx="298" cy="155" r="1.0" opacity="0.70"/><circle cx="258" cy="285" r="0.9" opacity="0.52"/>
+  <circle cx="308" cy="302" r="1.1" opacity="0.60"/><circle cx="468" cy="72"  r="0.8" opacity="0.70"/>
+  <circle cx="508" cy="108" r="1.0" opacity="0.52"/><circle cx="552" cy="158" r="0.9" opacity="0.62"/>
+  <circle cx="498" cy="288" r="1.1" opacity="0.68"/><circle cx="458" cy="318" r="0.8" opacity="0.52"/>
+  <circle cx="98"  cy="33"  r="1.5" opacity="0.80"/><circle cx="668" cy="36"  r="1.8" opacity="0.72"/>
+  <circle cx="22"  cy="288" r="1.6" opacity="0.78"/><circle cx="773" cy="228" r="1.5" opacity="0.70"/>
+  <circle cx="418" cy="23"  r="1.8" opacity="0.80"/><circle cx="592" cy="318" r="1.6" opacity="0.70"/>
+  <circle cx="105" cy="338" r="1.5" opacity="0.78"/><circle cx="358" cy="363" r="1.8" opacity="0.70"/>
+</g>
+
+<!-- ══ TWINKLING STARS ══ -->
+<circle cx="182" cy="35"  r="1.8" fill="white">
+  <animate attributeName="opacity" values="0.9;0.15;0.85;0.3;0.9"  dur="3.1s" repeatCount="indefinite"/>
+</circle>
+<circle cx="622" cy="62"  r="2.0" fill="#d8eeff">
+  <animate attributeName="opacity" values="0.7;0.1;0.8;0.2;0.7"   dur="2.4s" repeatCount="indefinite"/>
+</circle>
+<circle cx="68"  cy="172" r="1.6" fill="white">
+  <animate attributeName="opacity" values="0.8;0.2;0.9;0.1;0.8"   dur="3.8s" repeatCount="indefinite"/>
+</circle>
+<circle cx="743" cy="168" r="1.9" fill="#e8f4ff">
+  <animate attributeName="opacity" values="0.9;0.2;0.7;0.3;0.9"   dur="2.7s" repeatCount="indefinite"/>
+</circle>
+<circle cx="268" cy="342" r="1.7" fill="white">
+  <animate attributeName="opacity" values="0.6;0.9;0.1;0.8;0.6"   dur="4.2s" repeatCount="indefinite"/>
+</circle>
+<circle cx="688" cy="308" r="2.1" fill="#c8e8ff">
+  <animate attributeName="opacity" values="0.8;0.15;0.9;0.2;0.8"  dur="3.5s" repeatCount="indefinite"/>
+</circle>
+<circle cx="132" cy="128" r="1.8" fill="#e0f0ff">
+  <animate attributeName="opacity" values="0.9;0.1;0.7;0.4;0.9"   dur="3.3s" repeatCount="indefinite"/>
+</circle>
+<circle cx="468" cy="352" r="1.6" fill="white">
+  <animate attributeName="opacity" values="0.7;0.3;0.85;0.1;0.7"  dur="2.9s" repeatCount="indefinite"/>
+</circle>
+<!-- crosshair bright stars -->
+<g><circle cx="718" cy="76"  r="2.2" fill="white">
+  <animate attributeName="opacity" values="0.85;0.2;0.85" dur="4.0s" repeatCount="indefinite"/>
+</circle>
+<line x1="718" y1="70" x2="718" y2="82" stroke="white" stroke-width="0.5" opacity="0.4"/>
+<line x1="712" y1="76" x2="724" y2="76" stroke="white" stroke-width="0.5" opacity="0.4"/>
+</g>
+<g><circle cx="58"  cy="313" r="2.0" fill="white">
+  <animate attributeName="opacity" values="0.8;0.15;0.8" dur="3.6s" repeatCount="indefinite"/>
+</circle>
+<line x1="58" y1="307" x2="58" y2="319" stroke="white" stroke-width="0.5" opacity="0.35"/>
+<line x1="52" y1="313" x2="64" y2="313" stroke="white" stroke-width="0.5" opacity="0.35"/>
+</g>
+
+<!-- ══════════════════════════════════════
+     LAYER ORDER:
+       1. orbit glow + ring  (before Earth)
+       2. satellite BACK copy (clip=cBack)
+       3. Earth
+       4. satellite FRONT copy (clip=cFront)
+     ══════════════════════════════════════ -->
+
+<!-- 1a. ORBIT GLOW (blurred, before Earth) -->
+<ellipse cx="400" cy="190" rx="168" ry="60"
+         fill="none" stroke="#00d4ff" stroke-width="7" stroke-opacity="0.10"
+         transform="rotate(-22,400,190)" filter="url(#fOrbit)"/>
+
+<!-- 1b. ORBIT RING full, dim (before Earth — Earth occludes back portion) -->
+<ellipse cx="400" cy="190" rx="168" ry="60"
+         fill="none" stroke="#00bcd4" stroke-width="1.2" stroke-opacity="0.40"
+         stroke-dasharray="8 5"
+         transform="rotate(-22,400,190)"/>
+
+<!-- 2. SATELLITE — BACK COPY (rendered before Earth so Earth covers it) -->
+<g clip-path="url(#cBack)" opacity="0.70">
+  <g>
+    <rect x="-8.5" y="-5"   width="17" height="10" fill="#ccdff2" rx="2.2"/>
+    <line x1="-4"  y1="-5"  x2="-4"  y2="5"  stroke="#8aaabf" stroke-width="0.6" opacity="0.7"/>
+    <line x1=" 4"  y1="-5"  x2=" 4"  y2="5"  stroke="#8aaabf" stroke-width="0.6" opacity="0.7"/>
+    <rect x="-28"  y="-3"   width="18" height="6" fill="#1460b8" rx="1"/>
+    <line x1="-28" y1="0"   x2="-10"  y2="0"  stroke="#00c8ff" stroke-width="0.6" opacity="0.85"/>
+    <line x1="-22" y1="-3"  x2="-22"  y2="3"  stroke="#00c8ff" stroke-width="0.4" opacity="0.55"/>
+    <line x1="-16" y1="-3"  x2="-16"  y2="3"  stroke="#00c8ff" stroke-width="0.4" opacity="0.55"/>
+    <rect x=" 10"  y="-3"   width="18" height="6" fill="#1460b8" rx="1"/>
+    <line x1=" 10" y1="0"   x2=" 28"  y2="0"  stroke="#00c8ff" stroke-width="0.6" opacity="0.85"/>
+    <line x1=" 16" y1="-3"  x2=" 16"  y2="3"  stroke="#00c8ff" stroke-width="0.4" opacity="0.55"/>
+    <line x1=" 22" y1="-3"  x2=" 22"  y2="3"  stroke="#00c8ff" stroke-width="0.4" opacity="0.55"/>
+    <line x1="0"   y1="-5"  x2="0"    y2="-12" stroke="#88aacc" stroke-width="0.9"/>
+    <circle cx="0" cy="-12" r="1.3" fill="#aaccee"/>
+    <animateMotion dur="8s" repeatCount="indefinite" rotate="auto">
+      <mpath href="#satOrbit"/>
+    </animateMotion>
+  </g>
+</g>
+
+<!-- 3. EARTH -->
+<!-- atmosphere halos -->
+<circle cx="400" cy="190" r="90" fill="none" stroke="#0099cc" stroke-width="22" stroke-opacity="0.05"/>
+<circle cx="400" cy="190" r="83" fill="none" stroke="#00bbdd" stroke-width="9"  stroke-opacity="0.09"/>
+<circle cx="400" cy="190" r="78" fill="none" stroke="#00eeff" stroke-width="4"  stroke-opacity="0.14"/>
+<!-- Earth body -->
+<circle cx="400" cy="190" r="73" fill="url(#gEarth)" filter="url(#fEarth)"/>
+<!-- Continents (clipped to Earth disc) -->
+<g clip-path="url(#cEarth)">
+  <path d="M391,147 C401,142 412,148 415,158 C418,167 412,177 406,182 C400,187 391,188 385,182 C379,176 379,166 382,157Z" fill="#1e5010" opacity="0.72"/>
+  <path d="M387,181 C395,178 402,183 403,193 C404,202 397,209 390,208 C383,207 379,198 381,189Z" fill="#1e5010" opacity="0.65"/>
+  <path d="M354,149 C363,144 372,151 371,162 C370,172 362,179 353,176 C345,173 344,162 347,154Z" fill="#1a4a0a" opacity="0.62"/>
+  <path d="M349,175 C356,172 362,177 361,185 C360,193 352,197 345,194 C338,191 339,181 343,176Z" fill="#1e5010" opacity="0.58"/>
+  <path d="M416,144 C431,139 448,147 452,160 C456,171 447,181 434,182 C421,183 415,173 415,161Z" fill="#1e5010" opacity="0.67"/>
+  <path d="M437,204 C446,200 453,206 453,215 C453,223 445,227 437,225 C429,223 428,213 432,207Z" fill="#1a4a0a" opacity="0.58"/>
+  <path d="M358,139 C363,135 370,137 372,143 C374,149 370,154 364,155 C358,155 355,149 356,143Z" fill="#1a3a08" opacity="0.45"/>
+  <!-- Night side -->
+  <path d="M400,117 C435,118 466,148 466,190 C466,232 435,262 400,263Z" fill="#000a22" opacity="0.32"/>
+  <!-- City lights -->
+  <g fill="#ffe080" opacity="0.55">
+    <circle cx="428" cy="152" r="1.2"/><circle cx="438" cy="163" r="0.9"/>
+    <circle cx="445" cy="175" r="1.0"/><circle cx="450" cy="188" r="0.8"/>
+    <circle cx="445" cy="200" r="1.1"/><circle cx="435" cy="212" r="0.9"/>
+    <circle cx="422" cy="222" r="1.0"/>
+  </g>
+  <!-- Specular highlight -->
+  <ellipse cx="378" cy="165" rx="26" ry="17" fill="white" opacity="0.055" transform="rotate(-28,378,165)"/>
+  <ellipse cx="370" cy="158" rx="11" ry="7"  fill="white" opacity="0.040" transform="rotate(-28,370,158)"/>
+</g>
+<!-- Atmosphere colour overlay -->
+<circle cx="400" cy="190" r="73" fill="url(#gAtm)"/>
+
+<!-- Front arc orbit line redrawn after Earth (bright, clipped to front half only) -->
+<path d="M 555.8,127.1 A 168,60 -22 0 1 244.2,252.9"
+      fill="none" stroke="#00d4ff" stroke-width="1.6" stroke-opacity="0.72"
+      stroke-dasharray="8 5"
+      clip-path="url(#cFront)"/>
+
+<!-- 4. SATELLITE — FRONT COPY (rendered after Earth so it appears in front) -->
+<g clip-path="url(#cFront)" filter="url(#fSat)">
+  <g>
+    <rect x="-8.5" y="-5"   width="17" height="10" fill="#ccdff2" rx="2.2"/>
+    <line x1="-4"  y1="-5"  x2="-4"  y2="5"  stroke="#8aaabf" stroke-width="0.6" opacity="0.7"/>
+    <line x1=" 4"  y1="-5"  x2=" 4"  y2="5"  stroke="#8aaabf" stroke-width="0.6" opacity="0.7"/>
+    <rect x="-28"  y="-3"   width="18" height="6" fill="#1460b8" rx="1"/>
+    <line x1="-28" y1="0"   x2="-10"  y2="0"  stroke="#00c8ff" stroke-width="0.6" opacity="0.85"/>
+    <line x1="-22" y1="-3"  x2="-22"  y2="3"  stroke="#00c8ff" stroke-width="0.4" opacity="0.55"/>
+    <line x1="-16" y1="-3"  x2="-16"  y2="3"  stroke="#00c8ff" stroke-width="0.4" opacity="0.55"/>
+    <rect x=" 10"  y="-3"   width="18" height="6" fill="#1460b8" rx="1"/>
+    <line x1=" 10" y1="0"   x2=" 28"  y2="0"  stroke="#00c8ff" stroke-width="0.6" opacity="0.85"/>
+    <line x1=" 16" y1="-3"  x2=" 16"  y2="3"  stroke="#00c8ff" stroke-width="0.4" opacity="0.55"/>
+    <line x1=" 22" y1="-3"  x2=" 22"  y2="3"  stroke="#00c8ff" stroke-width="0.4" opacity="0.55"/>
+    <line x1="0"   y1="-5"  x2="0"    y2="-12" stroke="#88aacc" stroke-width="0.9"/>
+    <circle cx="0" cy="-12" r="1.3" fill="#aaccee"/>
+    <!-- port nav light (red) -->
+    <circle cx="-9" cy="0" r="2.2" fill="#ff2222">
+      <animate attributeName="opacity" values="1;0;0;0;1;0;1;0" dur="2.2s" repeatCount="indefinite"/>
+      <animate attributeName="r"       values="2.2;3.2;2.2;2.2;2.8;2.2;2.2;2.2" dur="2.2s" repeatCount="indefinite"/>
+    </circle>
+    <!-- starboard nav light (green) -->
+    <circle cx="9"  cy="0" r="2.0" fill="#00ff88">
+      <animate attributeName="opacity" values="0;0;1;0;0;1;0;0" dur="2.2s" repeatCount="indefinite"/>
+    </circle>
+    <!-- engine glow -->
+    <circle cx="-9" cy="0" r="1.2" fill="#00ffff" opacity="0.6">
+      <animate attributeName="opacity" values="0.6;0.2;0.8;0.3;0.6" dur="0.9s" repeatCount="indefinite"/>
+    </circle>
+    <animateMotion dur="8s" repeatCount="indefinite" rotate="auto">
+      <mpath href="#satOrbit"/>
+    </animateMotion>
+  </g>
+</g>
+
+<!-- ══ HIDDEN ORBIT PATH ══
+     Front arc (sweep=1, CW through bottom = in front of Earth) first,
+     then back arc (sweep=0, CCW through top = behind Earth).
+     Both arcs use baked-in x-rotation=-22 — no transform attribute needed.
+-->
+<path id="satOrbit"
+      d="M 555.8,127.1 A 168,60 -22 0 1 244.2,252.9
+                       A 168,60 -22 0 0 555.8,127.1"
+      fill="none"/>
+
+</svg>
