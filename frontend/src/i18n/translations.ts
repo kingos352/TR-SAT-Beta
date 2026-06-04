@@ -311,7 +311,9 @@ export const translations: Record<string, any> = {
       rise_az: 'Rise Azimuth',
       max_az: 'Max Azimuth',
       set_az: 'Set Azimuth',
-      max_el: 'Max Elevation'
+      max_el: 'Max Elevation',
+      polar_sky_view: 'Polar Sky View',
+      elevation_profile: 'Elevation Profile'
     },
     assistant: {
       placeholder: 'Ask AI...',
@@ -753,7 +755,9 @@ export const translations: Record<string, any> = {
       rise_az: 'Doğuş Azimutu',
       max_az: 'Maks Azimut',
       set_az: 'Batış Azimutu',
-      max_el: 'Maks Yükseklik'
+      max_el: 'Maks Yükseklik',
+      polar_sky_view: 'Kutupsal Gökyüzü Görünümü',
+      elevation_profile: 'Yükseklik Profili'
     },
     assistant: {
       placeholder: 'Yapay Zekaya Sor...',

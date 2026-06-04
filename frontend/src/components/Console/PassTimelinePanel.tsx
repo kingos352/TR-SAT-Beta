@@ -213,14 +213,13 @@ const PassTimelinePanelInner: React.FC = () => {
       )}
 
       {/* Selected Pass Details & Charts Modal popup */}
-      {/* Selected Pass Details & Charts Modal popup */}
       {selectedDetailedPass && createPortal(
         <div style={{
           position: 'fixed',
           top: `${modalPos.y}px`,
           left: `${modalPos.x}px`,
           width: '800px',
-          height: '500px',
+          height: 'auto',
           background: 'rgba(11, 20, 35, 0.95)',
           backdropFilter: 'blur(20px)',
           border: '1px solid rgba(14, 165, 233, 0.4)',
@@ -287,7 +286,9 @@ const PassTimelinePanelInner: React.FC = () => {
 
           <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexGrow: 1, alignItems: 'stretch' }}>
             <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ color: 'var(--text-bright)', fontSize: '12px', fontWeight: 600, letterSpacing: '0.1em', marginBottom: '8px', opacity: 0.8 }}>POLAR SKY VIEW</div>
+              <div style={{ color: 'var(--text-bright)', fontSize: '12px', fontWeight: 600, letterSpacing: '0.1em', marginBottom: '8px', opacity: 0.8, textTransform: 'uppercase' }}>
+                {t('pass_timeline.polar_sky_view')}
+              </div>
               <SkyViewChart 
                 profile={selectedDetailedPass.elevation_profile} 
                 maxElevation={selectedDetailedPass.max_elevation_deg} 
@@ -296,7 +297,9 @@ const PassTimelinePanelInner: React.FC = () => {
               />
             </div>
             <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexGrow: 1 }}>
-              <div style={{ color: 'var(--text-bright)', fontSize: '12px', fontWeight: 600, letterSpacing: '0.1em', marginBottom: '8px', opacity: 0.8 }}>ELEVATION PROFILE</div>
+              <div style={{ color: 'var(--text-bright)', fontSize: '12px', fontWeight: 600, letterSpacing: '0.1em', marginBottom: '8px', opacity: 0.8, textTransform: 'uppercase' }}>
+                {t('pass_timeline.elevation_profile')}
+              </div>
               <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', width: '100%' }}>
                 <ElevationProfileChart 
                   profile={selectedDetailedPass.elevation_profile} 

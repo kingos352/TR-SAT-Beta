@@ -30,6 +30,27 @@ data/
 .env.*
 !.env.example
 
+# ── Installer build artifacts ─────────────────────────────────
+installer/assets/*.bmp
+installer/assets/icon.ico
+installer/output/
+installer/redist/MicrosoftEdgeWebview2Setup.exe
+backend/build/
+backend/dist/
+
+# ── Python virtual environments ────────────────────────────────
+.venv-build/
+**/.venv-build/
+
+# ── Large ephemeris data files ──────────────────────────────────
+*.bsp
+
+# ── Installer binaries ─────────────────────────────────────────
+installer/*.exe
+
+# ── Batch scripts ──────────────────────────────────────────────
+*.bat
+
 # ── Editor / OS ────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

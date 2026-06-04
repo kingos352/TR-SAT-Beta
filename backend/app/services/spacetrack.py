@@ -186,13 +186,14 @@ def fetch_spacetrack_by_object_type(db: Session, type_key: str) -> dict:
 
 def fetch_spacetrack_latest_by_norad(db: Session, norad_id: int):
     """
-    Fetch the latest GP data for a single NORAD ID from Space-Track,
+    Fetch historical and latest GP data (up to 100 records) for a single NORAD ID from Space-Track,
     parse it, classify it, and ingest it into the local catalog.
     Uses 'Space-Track' as the source.
     """
     client = authenticate_spacetrack_client()
     try:
-        url = f"{SPACETRACK_BASE_URL}/class/gp/NORAD_CAT_ID/{norad_id}/orderby/EPOCH desc/limit/1/format/tle"
+        # Fetch up to 100 historical records so the Orbit Evolution dashboard has data
+        url = f"{SPACETRACK_BASE_URL}/class/gp/NORAD_CAT_ID/{norad_id}/orderby/EPOCH desc/limit/100/format/tle"
         response = client.get(url)
         if response.status_code != 200:
             raise RuntimeError(f"Space-Track data request failed with status: {response.status_code}")
@@ -205,26 +206,24 @@ def fetch_spacetrack_latest_by_norad(db: Session, norad_id: int):
         if not parsed_entries:
             raise RuntimeError(f"Failed to parse TLE data for NORAD ID {norad_id}")
             
-        entry = parsed_entries[0]
-        line1 = entry["line1"]
-        line2 = entry["line2"]
+        # The first entry is the latest since we ordered by EPOCH desc
+        latest_entry = parsed_entries[0]
+        latest_line1 = latest_entry["line1"]
+        latest_line2 = latest_entry["line2"]
+        latest_epoch = extract_epoch(latest_line1)
+        cospar_id = latest_line1[9:17].strip() if len(latest_line1) >= 17 else None
         
-        epoch = extract_epoch(line1)
-        orbital_fields = extract_tle_orbital_fields(line1, line2)
-        cospar_id = line1[9:17].strip() if len(line1) >= 17 else None
-        
-        # Classification
-        # Group is not naturally available like Celestrak, we use "spacetrack"
+        # Classification using the latest entry
         group = "spacetrack"
-        object_type = classify_object_type(entry["name"], group)
-        category = classify_category(entry["name"], group)
+        object_type = classify_object_type(latest_entry["name"], group)
+        category = classify_category(latest_entry["name"], group)
         
-        # Upsert RSOCatalog
+        # Upsert RSOCatalog using the latest entry
         rso = db.query(RSOCatalog).filter(RSOCatalog.norad_id == norad_id).first()
         if not rso:
             rso = RSOCatalog(
                 norad_id=norad_id,
-                name=entry["name"],
+                name=latest_entry["name"],
                 object_type=object_type,
                 category=category,
                 source="Space-Track",
@@ -234,54 +233,61 @@ def fetch_spacetrack_latest_by_norad(db: Session, norad_id: int):
             )
             db.add(rso)
         else:
-            rso.name = entry["name"]
+            rso.name = latest_entry["name"]
             rso.object_type = object_type
             rso.category = category
             rso.source_group = group
             rso.cospar_id = cospar_id
             rso.last_updated = datetime.now(timezone.utc).replace(tzinfo=None)
-            # source remains untouched or set to Space-Track, but instructions say:
-            # "Check if source exists. If so, just use source = "Space-Track" for ST and source = "CelesTrak" for CT. Do NOT duplicate data_source if source already exists."
             rso.source = "Space-Track"
             
         db.flush()
         
-        # Upsert TLERecord to preserve norad_id + epoch constraint
-        existing_tle = db.query(TLERecord).filter(
-            TLERecord.norad_id == norad_id,
-            TLERecord.epoch == epoch
-        ).first()
-        
-        if not existing_tle:
-            tle_record = TLERecord(
-                norad_id=norad_id,
-                name=entry["name"],
-                line1=line1,
-                line2=line2,
-                epoch=epoch,
-                source="Space-Track",
-                source_group=group,
-                ingested_at=datetime.now(timezone.utc).replace(tzinfo=None),
-                **orbital_fields
-            )
-            db.add(tle_record)
-        else:
-            existing_tle.name = entry["name"]
-            existing_tle.line1 = line1
-            existing_tle.line2 = line2
-            existing_tle.source_group = group
-            existing_tle.source = "Space-Track"
-            existing_tle.ingested_at = datetime.now(timezone.utc).replace(tzinfo=None)
-            for key, val in orbital_fields.items():
-                setattr(existing_tle, key, val)
+        # Now ingest all returned historical TLEs into TLERecord
+        for entry in parsed_entries:
+            try:
+                line1 = entry["line1"]
+                line2 = entry["line2"]
+                epoch = extract_epoch(line1)
+                orbital_fields = extract_tle_orbital_fields(line1, line2)
+                
+                existing_tle = db.query(TLERecord).filter(
+                    TLERecord.norad_id == norad_id,
+                    TLERecord.epoch == epoch
+                ).first()
+                
+                if not existing_tle:
+                    tle_record = TLERecord(
+                        norad_id=norad_id,
+                        name=entry["name"],
+                        line1=line1,
+                        line2=line2,
+                        epoch=epoch,
+                        source="Space-Track",
+                        source_group=group,
+                        ingested_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                        **orbital_fields
+                    )
+                    db.add(tle_record)
+                else:
+                    existing_tle.name = entry["name"]
+                    existing_tle.line1 = line1
+                    existing_tle.line2 = line2
+                    existing_tle.source_group = group
+                    existing_tle.source = "Space-Track"
+                    existing_tle.ingested_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                    for key, val in orbital_fields.items():
+                        setattr(existing_tle, key, val)
+            except Exception:
+                continue
                 
         db.commit()
         
         return {
             "status": "success",
             "norad_id": norad_id,
-            "epoch": epoch.isoformat(),
-            "message": "Space-Track authenticated catalog GP data integration successful."
+            "epoch": latest_epoch.isoformat(),
+            "message": f"Space-Track GP data integration successful. Ingested {len(parsed_entries)} historical TLE records."
         }
     finally:
         client.close()

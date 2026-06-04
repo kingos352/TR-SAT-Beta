@@ -43,8 +43,7 @@ export const ElevationProfileChart: React.FC<ElevationProfileChartProps> = ({ pr
   const threshY = getY(minElevationThreshold);
 
   return (
-    <div style={{ background: '#0a0a0a', border: '1px solid #333', borderRadius: '4px', padding: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <h4 style={{ margin: '0 0 10px 0', color: '#ccc', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Elevation Profile</h4>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
       <svg width={width} height={height} style={{ overflow: 'visible' }}>
         {/* Axes */}
         <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + graphHeight} stroke="#333" strokeWidth="1" />

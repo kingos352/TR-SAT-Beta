@@ -41,6 +41,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": {},
     "copyright": "TR-SAT 2026",
     "category": "Education",
     "shortDescription": "Local-first orbital intelligence and RSO tracking platform",

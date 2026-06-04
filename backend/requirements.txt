@@ -1,18 +1,38 @@
+# ── Web framework ──────────────────────────────────────────────────────────────
 fastapi>=0.110.0
-scipy>=1.12.0
-uvicorn>=0.28.0
+# uvicorn[standard] pulls in httptools + websockets + uvloop (Win: asyncio loop)
+uvicorn[standard]>=0.28.0
+
+# ── Data validation & settings ─────────────────────────────────────────────────
 pydantic>=2.6.0
 pydantic-settings>=2.2.0
+python-multipart>=0.0.9   # FastAPI form/file upload support
+
+# ── Database ───────────────────────────────────────────────────────────────────
 sqlalchemy>=2.0.0
-httpx>=0.27.0
-sgp4>=2.23
-skyfield>=1.48
+
+# ── HTTP clients ───────────────────────────────────────────────────────────────
+httpx>=0.27.0       # async HTTP — CelesTrak sync, Gemini API, Space-Track
+requests>=2.31.0    # sync HTTP fallback used in some service paths
+
+# ── Orbital mechanics ──────────────────────────────────────────────────────────
+sgp4>=2.23          # SGP4/SDP4 propagation core
+skyfield>=1.48      # high-level astrodynamics (ECI, WGS84, passes, AER)
+
+# ── Scientific computing ───────────────────────────────────────────────────────
+numpy>=1.26.0       # conjunction screening, collision probability, coord conversion
+scipy>=1.12.0       # solve_ivp (numerical propagator), chi2 (Pc calculation)
+
+# ── Env / config ───────────────────────────────────────────────────────────────
 python-dotenv>=1.0.1
+
+# ── WebSocket support ──────────────────────────────────────────────────────────
+websockets>=12.0    # live telemetry WebSocket endpoint
+
+# ── H11 / HTTP parsing ─────────────────────────────────────────────────────────
+h11>=0.14.0         # HTTP/1.1 implementation used by uvicorn
+
+# ── Testing (dev only — excluded from PyInstaller bundle) ─────────────────────
 pytest>=8.0.0
-websockets>=12.0
-
-# Optional — GPU acceleration for conjunction screening (NVIDIA CUDA)
-# RTX 40xx / 30xx (CUDA 12.x):  pip install cupy-cuda12x
-# Older cards (CUDA 11.x):       pip install cupy-cuda11x
-# Without this package the code falls back to NumPy automatically.
-
+pytest-asyncio>=0.23.0
+httpx                # also needed by pytest test client

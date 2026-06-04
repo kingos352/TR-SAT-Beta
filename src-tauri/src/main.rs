@@ -8,6 +8,9 @@ use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{Manager, RunEvent};
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 struct BackendProcess(Mutex<Option<Child>>);
 
 fn port_is_open(port: u16) -> bool {
@@ -29,11 +32,16 @@ fn start_backend(_app: &tauri::App) -> Option<Child> {
         .join("backend");
     let venv_py = backend_dir.join(".venv").join("Scripts").join("python.exe");
     let python = if venv_py.exists() { venv_py } else { PathBuf::from("py") };
-    Command::new(python)
-        .args(["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"])
-        .current_dir(&backend_dir)
-        .spawn()
-        .ok()
+    let mut cmd = Command::new(python);
+    cmd.args(["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"])
+        .current_dir(&backend_dir);
+
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    cmd.spawn().ok()
 }
 
 #[cfg(not(debug_assertions))]
@@ -41,23 +49,46 @@ fn start_backend(app: &tauri::App) -> Option<Child> {
     if port_is_open(8000) {
         return None;
     }
-    let res_dir = app.path().resource_dir().ok()?;
+    // app_data_dir resolves to %APPDATA%\com.trsat.mission-control — the same
+    // location the Inno Setup installer writes the .env credentials file to.
     let data_dir = app.path().app_data_dir().ok()?;
     std::fs::create_dir_all(&data_dir).ok();
 
-    // Tauri may place the resource at different sub-paths depending on the
-    // resources map configuration — check the most common locations.
+    // Inno Setup installs the onedir backend folder into {app}\backend\.
+    // The main exe is the Tauri app, so current_exe().parent() == {app}.
+    let app_dir = std::env::current_exe().ok()?
+        .parent()?.to_path_buf();
+
     let candidates = [
-        res_dir.join("trsat-backend.exe"),
-        res_dir.join("backend-exe").join("trsat-backend.exe"),
-        res_dir.join("binaries").join("trsat-backend.exe"),
+        // Primary: Inno Setup onedir layout
+        app_dir.join("backend").join("trsat-backend.exe"),
+        // Fallback: flat layout (legacy single-exe installs)
+        app_dir.join("trsat-backend.exe"),
     ];
     let backend_exe = candidates.iter().find(|p| p.exists())?;
 
-    Command::new(backend_exe)
+    // Set working directory to the backend folder so _internal/ is found
+    let backend_dir = backend_exe.parent()?;
+
+    // Create a log file for backend stderr in the data directory
+    let log_path = data_dir.join("backend-stderr.log");
+    let stderr_file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .ok()?;
+
+    let mut cmd = Command::new(backend_exe);
+    cmd.current_dir(backend_dir)
         .env("TRSAT_DATA_DIR", data_dir.to_string_lossy().to_string())
-        .spawn()
-        .ok()
+        .stderr(std::process::Stdio::from(stderr_file));
+
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    cmd.spawn().ok()
 }
 
 fn main() {

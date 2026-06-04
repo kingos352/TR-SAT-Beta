@@ -42,8 +42,7 @@ export const SkyViewChart: React.FC<SkyViewChartProps> = ({ profile, width = 300
   const losXY = pathPoints[pathPoints.length - 1];
 
   return (
-    <div style={{ background: '#0a0a0a', border: '1px solid #333', borderRadius: '4px', padding: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <h4 style={{ margin: '0 0 10px 0', color: '#ccc', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px' }}>Polar Sky View</h4>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <svg width={width} height={height} style={{ overflow: 'visible' }}>
         {/* Circles for 0, 30, 60 elevation */}
         <circle cx={cx} cy={cy} r={rMax} fill="none" stroke="#333" strokeWidth="1" />

@@ -3,18 +3,27 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from pathlib import Path
 from app.config import settings, get_data_dir
 
-# Ensure the data directory exists before SQLAlchemy tries to open the file.
-# This matters on first run (no data/ yet) and in Tauri sidecar mode where
-# the working directory may differ from the backend source tree.
-get_data_dir()
+# Resolve the data directory first (creates it if missing).
+# get_data_dir() honours TRSAT_DATA_DIR set by the Tauri sidecar launcher, so
+# the database always lands in %APPDATA%\com.trsat.mission-control\ in production
+# regardless of the process working directory.
+_data_dir = get_data_dir()
 
-# Resolve relative SQLite paths to absolute so the path is CWD-independent.
+# Build an absolute SQLite URL that is CWD-independent.
+# The relative default "sqlite:///../data/trsat_v3.sqlite" would resolve against
+# the process CWD which, when launched by Tauri from Program Files, points to
+# C:\Program Files\... — a location we cannot write to.
 _db_url = settings.DATABASE_URL
 if _db_url.startswith("sqlite:///") and not _db_url.startswith("sqlite:////"):
     _rel = _db_url[len("sqlite:///"):]
-    _abs = Path(_rel).resolve()
-    if not _abs.parent.exists():
-        _abs.parent.mkdir(parents=True, exist_ok=True)
+    _path = Path(_rel)
+    if _path.is_absolute():
+        _abs = _path
+    else:
+        # Relative path: always resolve against data_dir, never against CWD.
+        # E.g. "../data/trsat_v3.sqlite" -> <data_dir>/trsat_v3.sqlite
+        _abs = _data_dir / _path.name
+    _abs.parent.mkdir(parents=True, exist_ok=True)
     _db_url = f"sqlite:///{_abs}"
 
 # For SQLite, we must set check_same_thread to False to allow concurrent async operations
